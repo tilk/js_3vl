@@ -30,3 +30,15 @@ jsc.property('x | 1 == 1', vector3vl, v =>
 jsc.property('1 | x == 1', vector3vl, v =>
     Vector3vl.ones(v.bits).eq(Vector3vl.ones(v.bits).or(v)));
 
+jsc.property('x ^ 0 == x', vector3vl, v =>
+    v.xor(Vector3vl.zeros(v.bits)).eq(v));
+
+jsc.property('0 ^ x == x', vector3vl, v =>
+    Vector3vl.zeros(v.bits).xor(v).eq(v));
+
+jsc.property('x ^ 1 == ~x', vector3vl, v =>
+    v.xor(Vector3vl.ones(v.bits)).eq(v.not()));
+
+jsc.property('1 ^ x == ~x', vector3vl, v =>
+    Vector3vl.ones(v.bits).xor(v).eq(v.not()));
+

@@ -3,6 +3,12 @@ function zip(f : (x : number, y : number) => number, a : number[], b : number[])
     return a.map((x, i) => f(x, b[i]));
 }
 
+function zip4(
+        f : (x : number, y : number, z : number, q : number) => number, 
+        a : number[], b : number[], c : number[], d : number[]) {
+    return a.map((x, i) => f(x, b[i], c[i], d[i]));
+}
+
 export class Vector3vl {
     private _bits : number;
     private _avec : number[];
@@ -64,6 +70,14 @@ export class Vector3vl {
         return new Vector3vl(this._bits,
             zip((a, b) => a | b, v._avec, this._avec),
             zip((a, b) => a | b, v._bvec, this._bvec));
+    }
+    xor(v : Vector3vl) {
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip4((a1, a2, b1, b2) => (a1 | b1) & (a2 ^ b2),
+                 v._avec, v._bvec, this._avec, this._bvec),
+            zip4((a1, a2, b1, b2) => (a1 & b1) ^ (a2 | b2),
+                 v._avec, v._bvec, this._avec, this._bvec));
     }
     not() {
         return new Vector3vl(this._bits,
