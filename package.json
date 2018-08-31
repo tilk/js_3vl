@@ -1,0 +1,16 @@
+{
+  "name": "3vl",
+  "version": "0.0.1",
+  "description": "Three-valued logic vectors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Marek Materzok",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "typescript": "^3.0.3"
+  }
+}
