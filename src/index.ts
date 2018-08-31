@@ -4,13 +4,13 @@ function zip(f : (x : number, y : number) => number, a : number[], b : number[])
 }
 
 export class Vector3vl {
-    private bits : number;
-    private avec : number[];
-    private bvec : number[];
+    private _bits : number;
+    private _avec : number[];
+    private _bvec : number[];
     private constructor(bits, avec, bvec) {
-        this.bits = bits;
-        this.avec = avec;
-        this.bvec = bvec;
+        this._bits = bits;
+        this._avec = avec;
+        this._bvec = bvec;
     }
     static make(bits : number, init) {
         bits = bits | 0;
@@ -25,6 +25,15 @@ export class Vector3vl {
         return new Vector3vl(bits,
             Array(words).fill(iva),
             Array(words).fill(ivb));
+    }
+    static zeros(bits : number) {
+        return Vector3vl.make(bits, -1);
+    }
+    static ones(bits : number) {
+        return Vector3vl.make(bits, 1);
+    }
+    static xes(bits : number) {
+        return Vector3vl.make(bits, 0);
     }
     static fromArray(data : number[]) {
         let m = 0, k = -1, avec = [], bvec = [];
@@ -41,28 +50,31 @@ export class Vector3vl {
         }
         return new Vector3vl(data.length, avec, bvec);
     }
+    get bits() : number {
+        return this._bits;
+    }
     and(v : Vector3vl) {
-        console.assert(v.bits == this.bits);
-        return new Vector3vl(this.bits,
-            zip((a, b) => a & b, v.avec, this.avec),
-            zip((a, b) => a & b, v.bvec, this.bvec));
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip((a, b) => a & b, v._avec, this._avec),
+            zip((a, b) => a & b, v._bvec, this._bvec));
     }
     or(v : Vector3vl) {
-        console.assert(v.bits == this.bits);
-        return new Vector3vl(this.bits,
-            zip((a, b) => a | b, v.avec, this.avec),
-            zip((a, b) => a | b, v.bvec, this.bvec));
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip((a, b) => a | b, v._avec, this._avec),
+            zip((a, b) => a | b, v._bvec, this._bvec));
     }
     not() {
-        return new Vector3vl(this.bits,
-            this.bvec.map(a => ~a),
-            this.avec.map(a => ~a));
+        return new Vector3vl(this._bits,
+            this._bvec.map(a => ~a),
+            this._avec.map(a => ~a));
     }
     toArray() {
         let bit = 0, k = 0, m = 1, out = [];
-        while (bit < this.bits) {
-            const a = this.avec[k] & m;
-            const b = this.bvec[k] & m;
+        while (bit < this._bits) {
+            const a = this._avec[k] & m;
+            const b = this._bvec[k] & m;
             if (a && b) out.push(1);
             else if (b) out.push(0);
             else out.push(-1);
@@ -76,15 +88,15 @@ export class Vector3vl {
         return out;
     }
     eq(v : Vector3vl) {
-        if (v.bits != this.bits) return false;
-        const lastmask = (~0) >>> -this.bits;
+        if (v._bits != this._bits) return false;
+        const lastmask = (~0) >>> -this._bits;
         let i = 0;
-        for (; i < this.avec.length - 1; i++) {
-            if (this.avec[i] != v.avec[i]) return false;
-            if (this.bvec[i] != v.bvec[i]) return false;
+        for (; i < this._avec.length - 1; i++) {
+            if (this._avec[i] != v._avec[i]) return false;
+            if (this._bvec[i] != v._bvec[i]) return false;
         }
-        if ((this.avec[i] & lastmask) != (v.avec[i] & lastmask)) return false;
-        if ((this.bvec[i] & lastmask) != (v.bvec[i] & lastmask)) return false;
+        if ((this._avec[i] & lastmask) != (v._avec[i] & lastmask)) return false;
+        if ((this._bvec[i] & lastmask) != (v._bvec[i] & lastmask)) return false;
         return true;
     }
 };
