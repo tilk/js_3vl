@@ -75,6 +75,18 @@ export class Vector3vl {
         }
         return out;
     }
+    eq(v : Vector3vl) {
+        if (v.bits != this.bits) return false;
+        const lastmask = (~0) >>> -this.bits;
+        let i = 0;
+        for (; i < this.avec.length - 1; i++) {
+            if (this.avec[i] != v.avec[i]) return false;
+            if (this.bvec[i] != v.bvec[i]) return false;
+        }
+        if ((this.avec[i] & lastmask) != (v.avec[i] & lastmask)) return false;
+        if ((this.bvec[i] & lastmask) != (v.bvec[i] & lastmask)) return false;
+        return true;
+    }
 };
 
 
