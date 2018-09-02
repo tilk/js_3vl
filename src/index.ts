@@ -9,6 +9,14 @@ function zip4(
     return a.map((x, i) => f(x, b[i], c[i], d[i]));
 }
 
+function wordnum(n : number) {
+    return n >> 5;
+}
+
+function bitnum(n : number) {
+    return n & 0x1f;
+}
+
 export class Vector3vl {
     private _bits : number;
     private _avec : number[];
@@ -44,7 +52,7 @@ export class Vector3vl {
     static fromArray(data : number[]) {
         let m = 0, k = -1, avec = [], bvec = [];
         for (const x of data) {
-            if ((m & 0x1f) == 0) {
+            if (bitnum(m) == 0) {
                 avec.push(0);
                 bvec.push(0);
                 k++;
@@ -58,6 +66,13 @@ export class Vector3vl {
     }
     get bits() : number {
         return this._bits;
+    }
+    get(n : number) {
+        const bn = bitnum(n);
+        const wn = wordnum(n);
+        const a = (this._avec[wn] >>> bn) & 1;
+        const b = (this._bvec[wn] >>> bn) & 1;
+        return a + b - 1;
     }
     and(v : Vector3vl) {
         console.assert(v._bits == this._bits);

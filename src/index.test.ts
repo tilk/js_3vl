@@ -12,6 +12,9 @@ jsc.property('fromArray.toArray', array3vl, a =>
 jsc.property('toArray.fromArray', vector3vl, v => 
     v.eq(Vector3vl.fromArray(v.toArray())));
 
+jsc.property('get', vector3vl, v => 
+    _.isEqual(v.toArray(), Array.from(Array(v.bits), (x, k) => v.get(k))));
+
 jsc.property('~~x = x', vector3vl, v =>
     v.eq(v.not().not()));
 
