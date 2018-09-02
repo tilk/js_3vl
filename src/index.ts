@@ -32,7 +32,7 @@ export class Vector3vl {
         switch(init) {
             case true: case '1': case 1: iva = ivb = ~0; break;
             case false: case '0': case -1: case undefined: iva = ivb = 0; break;
-            case 'x': case '0': iva = 0; ivb = ~0; break;
+            case 'x': case 0: iva = 0; ivb = ~0; break;
             default: console.assert(false);
         }
         const words = (bits+31)/32 | 0;
