@@ -5,6 +5,11 @@ import * as jsc from 'jsverify';
 
 const array3vl = jsc.array(jsc.elements([-1, 0, 1]));
 const vector3vl = array3vl.smap(a => Vector3vl.fromArray(a), v => v.toArray());
+const binarytxt = jsc.array(jsc.elements(['0', '1', 'x'])).smap(a => a.join(''), s => s.split(''))
+const octaltxt = jsc.array(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) => i.toString()))))
+    .smap(a => a.join(''), s => s.split(''))
+const hextxt = jsc.array(jsc.elements(['x'].concat(Array.from(Array(16), (a, i) => i.toString(16)))))
+    .smap(a => a.join(''), s => s.split(''))
 
 describe('relation to arrays', () => {
     jsc.property('fromArray.toArray', array3vl, a =>
@@ -15,6 +20,17 @@ describe('relation to arrays', () => {
 
     jsc.property('get', vector3vl, v => 
         _.isEqual(v.toArray(), Array.from(Array(v.bits), (x, k) => v.get(k))));
+});
+
+describe('parsing and printing', () => {
+    jsc.property('rev binary', vector3vl, v =>
+        v.eq(Vector3vl.fromBin(v.toBin())));
+
+    jsc.property('binary', binarytxt, s =>
+        s === Vector3vl.fromBin(s).toBin());
+
+    jsc.property('hexadecimal', hextxt, s =>
+        s === Vector3vl.fromHex(s).toHex());
 });
 
 describe('constant vectors', () => {
