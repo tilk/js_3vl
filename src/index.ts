@@ -233,6 +233,32 @@ export class Vector3vl {
     concat(...vs : Vector3vl[]) {
         return Vector3vl.concat(this, ...vs);
     }
+    slice(start? : number, end? : number) {
+        if (start === undefined) start = 0;
+        if (end === undefined) end = this._bits;
+        if (end > this.bits) end = this.bits;
+        if (start > end) end = start;
+        if ((start & 0x1f) == 0) {
+            const avec = this._avec.slice(start >>> 5, (end + 31) >>> 5);
+            const bvec = this._bvec.slice(start >>> 5, (end + 31) >>> 5);
+            return new Vector3vl(end - start, avec, bvec);
+        } else {
+            const avec = [0], bvec = [0];
+            for (let idx = start >> 5; idx <= (end >>> 5); idx++) {
+                avec[avec.length-1] |= this._avec[idx] << -start;
+                bvec[bvec.length-1] |= this._bvec[idx] << -start;
+                avec.push(this._avec[idx] >>> start);
+                bvec.push(this._bvec[idx] >>> start);
+            }
+            avec.splice(0, 1);
+            bvec.splice(0, 1);
+            if (avec.length > (((end-start+31)/32)|0)) {
+                avec.pop();
+                bvec.pop();
+            }
+            return new Vector3vl(end - start, avec, bvec);
+        }
+    }
     toIterator(skip : number) {
         if ((skip & (skip - 1)) == 0) return this.toIteratorPow2(skip);
         else return this.toIteratorAnySkip(skip);

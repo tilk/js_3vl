@@ -188,5 +188,28 @@ describe('negated ops', () => {
 describe('concat', () => {
     jsc.property('(a ++ b) ++ c == a ++ (b ++ c)', replicate(3, vector3vl), ([v, w, x]) =>
         v.concat(w).concat(x).eq(v.concat(w.concat(x))));
+
+    jsc.property('(a ++ b) ++ c == a ++ b ++ c', replicate(3, vector3vl), ([v, w, x]) =>
+        v.concat(w).concat(x).eq(Vector3vl.concat(v, w, x)));
+
+    jsc.property('a ++ null == a', vector3vl, v =>
+        v.concat(Vector3vl.zeros(0)).eq(v));
+
+    jsc.property('null ++ a == a', vector3vl, v =>
+        Vector3vl.zeros(0).concat(v).eq(v));
+});
+
+describe('slice', () => {
+    jsc.property('a.slice() == a', vector3vl, v =>
+        v.slice().eq(v));
+
+    jsc.property('a.slice(a.bits) == null', vector3vl, v =>
+        v.slice(v.bits).eq(Vector3vl.zeros(0)));
+
+    jsc.property('a.slice(0, 0) == null', vector3vl, v =>
+        v.slice(0, 0).eq(Vector3vl.zeros(0)));
+
+    jsc.property('a.slice(0, n) ++ a.slice(n) == a', vector3vl, jsc.nat(10), (v, n) =>
+        v.slice(0, n).concat(v.slice(n)).eq(v));
 });
 
