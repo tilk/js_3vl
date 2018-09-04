@@ -48,6 +48,9 @@ describe('parsing and printing', () => {
     jsc.property('binary', binarytxt, s =>
         s === Vector3vl.fromBin(s).toBin());
 
+    jsc.property('octal', octaltxt, s =>
+        s === Vector3vl.fromOct(s).toOct());
+
     jsc.property('hexadecimal', hextxt, s =>
         s === Vector3vl.fromHex(s).toHex());
 });

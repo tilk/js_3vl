@@ -61,6 +61,30 @@ export class Vector3vl {
         return Vector3vl.make(bits, 0);
     }
     static fromIterator(iter : Iterable<number>, skip : number) {
+        if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip);
+        else return Vector3vl.fromIteratorAnySkip(iter, skip);
+    }
+    static fromIteratorAnySkip(iter : Iterable<number>, skip : number) {
+        let m = 0, k = -1, avec = [], bvec = [];
+        const mask = (1 << skip) - 1;
+        for (const v of iter) {
+            if (bitnum(m) == 0) {
+                avec.push(0);
+                bvec.push(0);
+                k++;
+            }
+            avec[k] |= ((v >>> skip) & mask) << m;
+            bvec[k] |= (v & mask) << m;
+            if (((mask << m) >>> m) != mask) {
+                avec.push(((v >>> skip) & mask) >>> -m);
+                bvec.push((v & mask) >>> -m);
+                k++;
+            }
+            m += skip;
+        }
+        return new Vector3vl(m, avec, bvec);
+    }
+    static fromIteratorPow2(iter : Iterable<number>, skip : number) {
         let m = 0, k = -1, avec = [], bvec = [];
         const mask = (1 << skip) - 1;
         for (const v of iter) {
@@ -79,30 +103,28 @@ export class Vector3vl {
         function* f(): Iterable<number> {
             for (const x of data) yield x + 1 + Number(x > 0);
         }
-        return Vector3vl.fromIterator(f(), 1);
+        return Vector3vl.fromIteratorPow2(f(), 1);
     }
     static fromBin(data : string) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromBinMap[data[i]];
         }
-        return Vector3vl.fromIterator(f(), 1);
+        return Vector3vl.fromIteratorPow2(f(), 1);
     }
-    /* wrong, todo
     static fromOct(data : string) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromOctMap[data[i]];
         }
-        return Vector3vl.fromIterator(f(), 3);
+        return Vector3vl.fromIteratorAnySkip(f(), 3);
     }
-    */
     static fromHex(data : string) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromHexMap[data[i]];
         }
-        return Vector3vl.fromIterator(f(), 4);
+        return Vector3vl.fromIteratorPow2(f(), 4);
     }
     get bits() : number {
         return this._bits;
@@ -139,39 +161,73 @@ export class Vector3vl {
             this._bvec.map(a => ~a),
             this._avec.map(a => ~a));
     }
-    *toIterator(skip : number) {
+    toIterator(skip : number) {
+        if ((skip & (skip - 1)) == 0) return this.toIteratorPow2(skip);
+        else return this.toIteratorAnySkip(skip);
+    }
+    *toIteratorAnySkip(skip : number) {
         this.normalize();
-        let bit = 0, k = 0, m = (1 << skip) - 1, out = [];
+        const sm = (1 << skip) - 1;
+        let bit = 0, k = 0, m = sm, out = [];
+        while (bit < this._bits) {
+            let a = (this._avec[k] & m) >>> bit;
+            let b = (this._bvec[k] & m) >>> bit;
+            if ((m >>> bit) != sm && k + 1 != this._avec.length) {
+                const m1 = sm >> -bit;
+                a |= (this._avec[k + 1] & m1) << -bit;
+                b |= (this._bvec[k + 1] & m1) << -bit;
+            }
+            yield (a << skip) | b;
+            m <<= skip;
+            bit += skip;
+            if (m == 0) {
+                k++;
+                m = (sm << bit);
+            }
+        }
+    }
+    *toIteratorPow2(skip : number) {
+        this.normalize();
+        const sm = (1 << skip) - 1;
+        let bit = 0, k = 0, m = sm, out = [];
         while (bit < this._bits) {
             const a = (this._avec[k] & m) >>> bit;
             const b = (this._bvec[k] & m) >>> bit;
             yield (a << skip) | b;
             m <<= skip;
+            bit += skip;
             if (m == 0) {
                 k++;
-                m = (1 << skip) - 1;
+                m = sm;
             }
-            bit += skip;
         }
     }
     toArray() {
         const out = [];
-        for (const v of this.toIterator(1)) {
+        for (const v of this.toIteratorPow2(1)) {
             out.push(v - 1 - Number(v > 1));
         }
         return out;
     }
     toBin() {
         const out = [];
-        for (const v of this.toIterator(1)) {
+        for (const v of this.toIteratorPow2(1)) {
             if (1 & v & ~(v >> 1)) out.push('x');
             else out.push((v >> 1).toString());
         }
         return out.reverse().join('');
     }
+    toOct() {
+        const out = [];
+        for (const v of this.toIteratorAnySkip(3)) {
+            if (1 & v & ~(v >> 3)) out.push('x');
+            else out.push((v >> 3).toString());
+        }
+        return out.reverse().join('');
+    }
     toHex() {
         const out = [];
-        for (const v of this.toIterator(4)) {
+        for (const v of this.toIteratorPow2(4)) {
             if (0xf & v & ~(v >> 4)) out.push('x');
             else out.push((v >> 4).toString(16));
         }
