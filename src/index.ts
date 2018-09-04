@@ -108,7 +108,7 @@ export class Vector3vl {
         if (nbits !== undefined) {
             const words = (nbits+31)/32 | 0;
             const last_x = m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1)));
-            if (last_x) bvec[bvec.length-1] |= (-1) << m;
+            if (last_x && (m & 0x1f)) bvec[bvec.length-1] |= (-1) << m;
             if (avec.length < words) {
                 avec = avec.concat(Array(words - avec.length).fill(0));
                 bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
@@ -136,7 +136,7 @@ export class Vector3vl {
         if (nbits !== undefined) {
             const words = (nbits+31)/32 | 0;
             const last_x = Boolean(m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1))));
-            if (last_x) bvec[bvec.length-1] |= (-1) << m;
+            if (last_x && (m & 0x1f)) bvec[bvec.length-1] |= (-1) << m;
             if (avec.length < words) {
                 avec = avec.concat(Array(words - avec.length).fill(0));
                 bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
