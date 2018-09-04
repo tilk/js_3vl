@@ -53,6 +53,36 @@ describe('parsing and printing', () => {
 
     jsc.property('hexadecimal', hextxt, s =>
         s === Vector3vl.fromHex(s).toHex());
+    
+    jsc.property('binary bits', binarytxt, s =>
+        s.length === Vector3vl.fromBin(s).bits);
+
+    jsc.property('octal bits', octaltxt, s =>
+        3 * s.length === Vector3vl.fromOct(s).bits);
+
+    jsc.property('hexadecimal bits', hextxt, s =>
+        4 * s.length === Vector3vl.fromHex(s).bits);
+    
+    const ex = s => s == '' ? '0' : s[0] == 'x' ? 'x' : '0';
+
+    jsc.property('binary sized', binarytxt, jsc.nat(100), (s, n) =>
+        ex(s).repeat(n).concat(s).slice(-n).slice(0, n) === Vector3vl.fromBin(s, n).toBin());
+    
+    jsc.property('octal sized', octaltxt, jsc.nat(100), (s, n) =>
+        ex(s).repeat(n).concat(s).slice(-n).slice(0, n) === Vector3vl.fromOct(s, 3*n).toOct());
+    
+    jsc.property('hexadecimal sized', hextxt, jsc.nat(100), (s, n) =>
+        ex(s).repeat(n).concat(s).slice(-n).slice(0, n) === Vector3vl.fromHex(s, 4*n).toHex());
+    
+    jsc.property('binary sized bits', binarytxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromBin(s, n).bits);
+
+    jsc.property('octal sized bits', octaltxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromOct(s, n).bits);
+
+    jsc.property('hexadecimal sized bits', hextxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromHex(s, n).bits);
+    
 });
 
 describe('constant vectors', () => {

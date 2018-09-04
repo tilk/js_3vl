@@ -23,7 +23,7 @@ const fromOctMap = {'x': 0b000111};
 for (let i = 0; i < 8; i++)
     fromOctMap[i.toString()] = i | (i << 3);
 Object.seal(fromBinMap);
-const fromHexMap = {'0': 0, '1': 3, 'x': 1};
+const fromHexMap = {'x': 0b00001111};
 for (let i = 0; i < 16; i++)
     fromHexMap[i.toString(16)] = i | (i << 4);
 Object.seal(fromBinMap);
@@ -60,11 +60,11 @@ export class Vector3vl {
     static xes(bits : number) {
         return Vector3vl.make(bits, 0);
     }
-    static fromIterator(iter : Iterable<number>, skip : number) {
-        if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip);
-        else return Vector3vl.fromIteratorAnySkip(iter, skip);
+    static fromIterator(iter : Iterable<number>, skip : number, nbits? : number) {
+        if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip, nbits);
+        else return Vector3vl.fromIteratorAnySkip(iter, skip, nbits);
     }
-    static fromIteratorAnySkip(iter : Iterable<number>, skip : number) {
+    static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits? : number) {
         let m = 0, k = -1, avec = [], bvec = [];
         const mask = (1 << skip) - 1;
         for (const v of iter) {
@@ -82,9 +82,22 @@ export class Vector3vl {
             }
             m += skip;
         }
+        if (nbits !== undefined) {
+            const words = (nbits+31)/32 | 0;
+            const last_x = m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1)));
+            if (last_x) bvec[bvec.length-1] |= (-1) << m;
+            if (avec.length < words) {
+                avec = avec.concat(Array(words - avec.length).fill(0));
+                bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
+            } else {
+                avec.splice(words);
+                bvec.splice(words);
+            }
+            m = nbits;
+        }
         return new Vector3vl(m, avec, bvec);
     }
-    static fromIteratorPow2(iter : Iterable<number>, skip : number) {
+    static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits? : number) {
         let m = 0, k = -1, avec = [], bvec = [];
         const mask = (1 << skip) - 1;
         for (const v of iter) {
@@ -97,6 +110,19 @@ export class Vector3vl {
             bvec[k] |= (v & mask) << m;
             m += skip;
         }
+        if (nbits !== undefined) {
+            const words = (nbits+31)/32 | 0;
+            const last_x = Boolean(m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1))));
+            if (last_x) bvec[bvec.length-1] |= (-1) << m;
+            if (avec.length < words) {
+                avec = avec.concat(Array(words - avec.length).fill(0));
+                bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
+            } else {
+                avec.splice(words);
+                bvec.splice(words);
+            }
+            m = nbits;
+        }
         return new Vector3vl(m, avec, bvec);
     }
     static fromArray(data : number[]) {
@@ -105,26 +131,26 @@ export class Vector3vl {
         }
         return Vector3vl.fromIteratorPow2(f(), 1);
     }
-    static fromBin(data : string) {
+    static fromBin(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromBinMap[data[i]];
         }
-        return Vector3vl.fromIteratorPow2(f(), 1);
+        return Vector3vl.fromIteratorPow2(f(), 1, nbits);
     }
-    static fromOct(data : string) {
+    static fromOct(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromOctMap[data[i]];
         }
-        return Vector3vl.fromIteratorAnySkip(f(), 3);
+        return Vector3vl.fromIteratorAnySkip(f(), 3, nbits);
     }
-    static fromHex(data : string) {
+    static fromHex(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromHexMap[data[i]];
         }
-        return Vector3vl.fromIteratorPow2(f(), 4);
+        return Vector3vl.fromIteratorPow2(f(), 4, nbits);
     }
     get bits() : number {
         return this._bits;
