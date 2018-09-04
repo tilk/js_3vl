@@ -6,13 +6,24 @@ import * as jsc from 'jsverify';
 const replicate = (n, g) => jsc.tuple(Array(n).fill(g))
 
 const myarray = <A>(arb : jsc.ArbitraryLike<A>) => jsc.bless({
-    generator: jsc.generator.bless(size => jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator))(size)),
+    generator: jsc.generator.bless((size : number) =>
+        jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator))(size)),
     shrink: jsc.shrink.array(arb.shrink),
     show: a => jsc.show.array(arb.show, a)
 });
 
-const array3vl = myarray(jsc.elements([-1, 0, 1]));
+const myarrays = <A>(n : number, arb : jsc.ArbitraryLike<A>) => jsc.bless({
+    generator: jsc.generator.bless((size : number) =>
+        jsc.generator.tuple(Array(n).fill(jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator))))(size)),
+    shrink: jsc.shrink.tuple(Array(n).fill(jsc.shrink.array(arb.shrink))),
+    show: a => jsc.show.tuple(Array(n).fill(b => jsc.show.array(arb.show, b)), a)
+});
+
+const trit = jsc.elements([-1, 0, 1]);
+const array3vl = myarray(trit);
+const arrays3vl = n => myarrays(n, trit);
 const vector3vl = array3vl.smap(a => Vector3vl.fromArray(a), v => v.toArray());
+const vectors3vl = n => arrays3vl(n).smap(x => x.map(a => Vector3vl.fromArray(a)), x => x.map(v => v.toArray()));
 const binarytxt = jsc.array(jsc.elements(['0', '1', 'x'])).smap(a => a.join(''), s => s.split(''))
 const octaltxt = myarray(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) => i.toString()))))
     .smap(a => a.join(''), s => s.split(''))
@@ -53,6 +64,15 @@ describe('constant vectors', () => {
 describe('not properties', () => {
     jsc.property('~~a == a', vector3vl, v =>
         v.eq(v.not().not()));
+    
+    jsc.property('~(a | b) == ~a & ~b', vectors3vl(2), ([v, w]) =>
+        v.or(w).not().eq(v.not().and(w.not())));
+    
+    jsc.property('~(a & b) == ~a | ~b', vectors3vl(2), ([v, w]) =>
+        v.and(w).not().eq(v.not().or(w.not())));
+    
+    jsc.property('~(a ^ b) == ~a ^ b', vectors3vl(2), ([v, w]) =>
+        v.xor(w).not().eq(v.not().xor(w)));
 });
 
 describe('or properties', () => {
@@ -70,6 +90,12 @@ describe('or properties', () => {
 
     jsc.property('1 | a == 1', vector3vl, v =>
         Vector3vl.ones(v.bits).eq(Vector3vl.ones(v.bits).or(v)));
+
+    jsc.property('a | b == b | a', vectors3vl(2), ([v, w]) =>
+        v.or(w).eq(w.or(v)));
+
+    jsc.property('(a | b) | c == a | (b | c)', vectors3vl(3), ([v, w, x]) =>
+        v.or(w).or(x).eq(v.or(w.or(x))));
 });
 
 describe('and properties', () => {
@@ -87,6 +113,12 @@ describe('and properties', () => {
 
     jsc.property('1 & a == a', vector3vl, v =>
         v.eq(Vector3vl.ones(v.bits).and(v)));
+
+    jsc.property('a & b == b & a', vectors3vl(2), ([v, w]) =>
+        v.and(w).eq(w.and(v)));
+
+    jsc.property('(a & b) & c == a & (b & c)', vectors3vl(3), ([v, w, x]) =>
+        v.and(w).and(x).eq(v.and(w.and(x))));
 });
 
 describe('xor properties', () => {
@@ -101,5 +133,11 @@ describe('xor properties', () => {
 
     jsc.property('1 ^ a == ~a', vector3vl, v =>
         Vector3vl.ones(v.bits).xor(v).eq(v.not()));
+
+    jsc.property('a ^ b == b ^ a', vectors3vl(2), ([v, w]) =>
+        v.xor(w).eq(w.xor(v)));
+
+    jsc.property('(a ^ b) ^ c == a ^ (b ^ c)', vectors3vl(3), ([v, w, x]) =>
+        v.xor(w).xor(x).eq(v.xor(w.xor(x))));
 });
 
