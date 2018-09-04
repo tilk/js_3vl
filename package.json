@@ -16,6 +16,14 @@
     "jest": "^23.5.0",
     "jsverify": "^0.8.3",
     "lodash": "^4.17.10",
+    "ts-jest": "^23.1.4",
     "typescript": "^3.0.3"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
   }
 }

@@ -1,5 +1,5 @@
 
-import { Vector3vl } from './index';
+import { Vector3vl } from '../src/index';
 import * as _ from 'lodash';
 import * as jsc from 'jsverify';
 
