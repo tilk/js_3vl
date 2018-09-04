@@ -3,12 +3,20 @@ import { Vector3vl } from './index';
 import * as _ from 'lodash';
 import * as jsc from 'jsverify';
 
-const array3vl = jsc.array(jsc.elements([-1, 0, 1]));
+const replicate = (n, g) => jsc.tuple(Array(n).fill(g))
+
+const myarray = <A>(arb : jsc.ArbitraryLike<A>) => jsc.bless({
+    generator: jsc.generator.bless(size => jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator))(size)),
+    shrink: jsc.shrink.array(arb.shrink),
+    show: a => jsc.show.array(arb.show, a)
+});
+
+const array3vl = myarray(jsc.elements([-1, 0, 1]));
 const vector3vl = array3vl.smap(a => Vector3vl.fromArray(a), v => v.toArray());
 const binarytxt = jsc.array(jsc.elements(['0', '1', 'x'])).smap(a => a.join(''), s => s.split(''))
-const octaltxt = jsc.array(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) => i.toString()))))
+const octaltxt = myarray(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) => i.toString()))))
     .smap(a => a.join(''), s => s.split(''))
-const hextxt = jsc.array(jsc.elements(['x'].concat(Array.from(Array(16), (a, i) => i.toString(16)))))
+const hextxt = myarray(jsc.elements(['x'].concat(Array.from(Array(16), (a, i) => i.toString(16)))))
     .smap(a => a.join(''), s => s.split(''))
 
 describe('relation to arrays', () => {
