@@ -185,3 +185,8 @@ describe('negated ops', () => {
         v.xnor(w).eq(v.xor(w).not()));
 });
 
+describe('concat', () => {
+    jsc.property('(a ++ b) ++ c == a ++ (b ++ c)', replicate(3, vector3vl), ([v, w, x]) =>
+        v.concat(w).concat(x).eq(v.concat(w.concat(x))));
+});
+

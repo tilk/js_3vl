@@ -60,6 +60,29 @@ export class Vector3vl {
     static xes(bits : number) {
         return Vector3vl.make(bits, 0);
     }
+    static concat(...vs : Vector3vl[]) {
+        let bits = 0, avec = [], bvec = [];
+        for (const v of vs) {
+            if ((bits & 0x1f) == 0) {
+                avec.splice(avec.length, 0, ...v._avec);
+                bvec.splice(bvec.length, 0, ...v._bvec);
+                bits += v._bits;
+            } else {
+                for (const k in v._avec) {
+                    avec[avec.length-1] |= v._avec[k] << bits;
+                    avec.push(v._avec[k] >>> -bits);
+                    bvec[bvec.length-1] |= v._bvec[k] << bits;
+                    bvec.push(v._bvec[k] >>> -bits);
+                }
+                bits += v._bits;
+                if (avec.length > (((bits + 31) / 32) | 0)) {
+                    avec.pop();
+                    bvec.pop();
+                }
+            }
+        }
+        return new Vector3vl(bits, avec, bvec);
+    }
     static fromIterator(iter : Iterable<number>, skip : number, nbits? : number) {
         if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip, nbits);
         else return Vector3vl.fromIteratorAnySkip(iter, skip, nbits);
@@ -206,6 +229,9 @@ export class Vector3vl {
         return new Vector3vl(this._bits,
             this._bvec.map(a => ~a),
             this._avec.map(a => ~a));
+    }
+    concat(...vs : Vector3vl[]) {
+        return Vector3vl.concat(this, ...vs);
     }
     toIterator(skip : number) {
         if ((skip & (skip - 1)) == 0) return this.toIteratorPow2(skip);
