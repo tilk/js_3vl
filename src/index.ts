@@ -182,6 +182,26 @@ export class Vector3vl {
             zip4((a1, a2, b1, b2) => (a1 & b1) ^ (a2 | b2),
                  v._avec, v._bvec, this._avec, this._bvec));
     }
+    nand(v : Vector3vl) {
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip((a, b) => ~(a & b), v._bvec, this._bvec),
+            zip((a, b) => ~(a & b), v._avec, this._avec));
+    }
+    nor(v : Vector3vl) {
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip((a, b) => ~(a | b), v._bvec, this._bvec),
+            zip((a, b) => ~(a | b), v._avec, this._avec));
+    }
+    xnor(v : Vector3vl) {
+        console.assert(v._bits == this._bits);
+        return new Vector3vl(this._bits,
+            zip4((a1, a2, b1, b2) => ~((a1 & b1) ^ (a2 | b2)),
+                 v._avec, v._bvec, this._avec, this._bvec),
+            zip4((a1, a2, b1, b2) => ~((a1 | b1) & (a2 ^ b2)),
+                 v._avec, v._bvec, this._avec, this._bvec));
+    }
     not() {
         return new Vector3vl(this._bits,
             this._bvec.map(a => ~a),

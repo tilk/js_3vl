@@ -174,3 +174,14 @@ describe('xor properties', () => {
         v.xor(w).xor(x).eq(v.xor(w.xor(x))));
 });
 
+describe('negated ops', () => {
+    jsc.property('a ~| b == ~(a | b)', vectors3vl(2), ([v, w]) =>
+        v.nor(w).eq(v.or(w).not()));
+    
+    jsc.property('a ~& b == ~(a & b)', vectors3vl(2), ([v, w]) =>
+        v.nand(w).eq(v.and(w).not()));
+    
+    jsc.property('a ~^ b == ~(a ^ b)', vectors3vl(2), ([v, w]) =>
+        v.xnor(w).eq(v.xor(w).not()));
+});
+
