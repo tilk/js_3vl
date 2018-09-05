@@ -9,6 +9,20 @@ function zip4(
     return a.map((x, i) => f(x, b[i], c[i], d[i]));
 }
 
+function bitfold(f : (x : number, y : number) => number, a : number[], lastmask : number, neutral : number) {
+    if (a.length == 0) return (neutral == 1) ? 1 : 0;
+    let acc = a[a.length-1];
+    if (neutral == 1) acc |= ~lastmask;
+    else acc &= lastmask;
+    for (let i = 0; i < a.length-1; i++) acc = f(acc, a[i]);
+    acc = f(acc, acc >>> 16);
+    acc = f(acc, acc >>> 8);
+    acc = f(acc, acc >>> 4);
+    acc = f(acc, acc >>> 2);
+    acc = f(acc, acc >>> 1);
+    return acc & 1;
+}
+
 function wordnum(n : number) {
     return n >> 5;
 }
@@ -60,6 +74,10 @@ export class Vector3vl {
     static xes(bits : number) {
         return Vector3vl.make(bits, 0);
     }
+    static empty = Vector3vl.zeros(0);
+    static one = Vector3vl.ones(1);
+    static zero = Vector3vl.zeros(1);
+    static x = Vector3vl.xes(1);
     static fromBool(b : boolean) {
         return Vector3vl.make(1, b ? 1 : -1);
     }
@@ -259,6 +277,26 @@ export class Vector3vl {
         return new Vector3vl(this._bits,
             this._bvec.map(a => ~a),
             this._avec.map(a => ~a));
+    }
+    reduceAnd() {
+        return new Vector3vl(1, 
+            [bitfold((a, b) => (a & b), this._avec, this._lastmask, 1)],
+            [bitfold((a, b) => (a & b), this._bvec, this._lastmask, 1)]);
+    }
+    reduceOr() {
+        return new Vector3vl(1, 
+            [bitfold((a, b) => (a | b), this._avec, this._lastmask, 0)],
+            [bitfold((a, b) => (a | b), this._bvec, this._lastmask, 0)]);
+    }
+    reduceNand() {
+        return new Vector3vl(1, 
+            [~bitfold((a, b) => (a & b), this._bvec, this._lastmask, 1)],
+            [~bitfold((a, b) => (a & b), this._avec, this._lastmask, 1)]);
+    }
+    reduceNor() {
+        return new Vector3vl(1, 
+            [~bitfold((a, b) => (a | b), this._bvec, this._lastmask, 0)],
+            [~bitfold((a, b) => (a | b), this._avec, this._lastmask, 0)]);
     }
     concat(...vs : Vector3vl[]) {
         return Vector3vl.concat(this, ...vs);

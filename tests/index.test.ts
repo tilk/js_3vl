@@ -199,6 +199,20 @@ describe('negated ops', () => {
         v.xnor(w).eq(v.xor(w).not()));
 });
 
+describe('reducing ops', () => {
+    jsc.property('&a', vector3vl, v =>
+        v.reduceAnd().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.and(b), Vector3vl.one)));
+    
+    jsc.property('|a', vector3vl, v =>
+        v.reduceOr().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.or(b), Vector3vl.zero)));
+    
+    jsc.property('~&a', vector3vl, v =>
+        v.reduceNand().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.and(b), Vector3vl.one).not()));
+    
+    jsc.property('~|a', vector3vl, v =>
+        v.reduceNor().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.or(b), Vector3vl.zero).not()));
+});
+
 describe('concat', () => {
     jsc.property('(a ++ b) ++ c == a ++ (b ++ c)', replicate(3, vector3vl), ([v, w, x]) =>
         v.concat(w).concat(x).eq(v.concat(w.concat(x))));
