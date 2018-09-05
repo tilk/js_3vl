@@ -60,10 +60,14 @@ export class Vector3vl {
     static xes(bits : number) {
         return Vector3vl.make(bits, 0);
     }
+    static fromBool(b : boolean) {
+        return Vector3vl.make(1, b ? 1 : -1);
+    }
     static concat(...vs : Vector3vl[]) {
         let bits = 0, avec = [], bvec = [];
         for (const v of vs) {
-            if ((bits & 0x1f) == 0) {
+            v.normalize();
+            if (bitnum(bits) == 0) {
                 avec.splice(avec.length, 0, ...v._avec);
                 bvec.splice(bvec.length, 0, ...v._bvec);
                 bits += v._bits;
@@ -108,7 +112,7 @@ export class Vector3vl {
         if (nbits !== undefined) {
             const words = (nbits+31)/32 | 0;
             const last_x = m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1)));
-            if (last_x && (m & 0x1f)) bvec[bvec.length-1] |= (-1) << m;
+            if (last_x && bitnum(m)) bvec[bvec.length-1] |= (-1) << m;
             if (avec.length < words) {
                 avec = avec.concat(Array(words - avec.length).fill(0));
                 bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
@@ -136,7 +140,7 @@ export class Vector3vl {
         if (nbits !== undefined) {
             const words = (nbits+31)/32 | 0;
             const last_x = Boolean(m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1))));
-            if (last_x && (m & 0x1f)) bvec[bvec.length-1] |= (-1) << m;
+            if (last_x && bitnum(m)) bvec[bvec.length-1] |= (-1) << m;
             if (avec.length < words) {
                 avec = avec.concat(Array(words - avec.length).fill(0));
                 bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
@@ -184,6 +188,32 @@ export class Vector3vl {
         const a = (this._avec[wn] >>> bn) & 1;
         const b = (this._bvec[wn] >>> bn) & 1;
         return a + b - 1;
+    }
+    get isHigh() : boolean {
+        if (this._bits == 0) return true;
+        const lastmask = this._lastmask;
+        const vechigh = (vec : number[]) =>
+            vec.slice(0, vec.length-1).every(x => x == ~0) && (vec[vec.length-1] & lastmask) == lastmask;
+        return vechigh(this._avec) && vechigh(this._bvec);
+    }
+    get isLow() : boolean {
+        if (this._bits == 0) return true;
+        const lastmask = this._lastmask;
+        const veclow = (vec : number[]) =>
+            vec.slice(0, vec.length-1).every(x => x == 0) && (vec[vec.length-1] & lastmask) == 0;
+        return veclow(this._avec) && veclow(this._bvec);
+    }
+    get isDefined() : boolean {
+        if (this._bits == 0) return false;
+        const dvec = zip((a, b) => a ^ b, this._avec, this._bvec);
+        dvec[dvec.length-1] |= ~this._lastmask;
+        return !dvec.every(x => x == ~0);
+    }
+    get isFullyDefined() : boolean {
+        if (this._bits == 0) return true;
+        const dvec = zip((a, b) => a ^ b, this._avec, this._bvec);
+        dvec[dvec.length-1] &= this._lastmask;
+        return !dvec.some(x => Boolean(x));
     }
     and(v : Vector3vl) {
         console.assert(v._bits == this._bits);
@@ -238,7 +268,7 @@ export class Vector3vl {
         if (end === undefined) end = this._bits;
         if (end > this.bits) end = this.bits;
         if (start > end) end = start;
-        if ((start & 0x1f) == 0) {
+        if (bitnum(start) == 0) {
             const avec = this._avec.slice(start >>> 5, (end + 31) >>> 5);
             const bvec = this._bvec.slice(start >>> 5, (end + 31) >>> 5);
             return new Vector3vl(end - start, avec, bvec);
@@ -342,9 +372,12 @@ export class Vector3vl {
         return true;
     }
     normalize() {
-        const lastmask = (~0) >>> -this._bits;
+        const lastmask = this._lastmask;
         this._avec[this._avec.length - 1] &= lastmask;
         this._bvec[this._bvec.length - 1] &= lastmask;
+    }
+    private get _lastmask() {
+        return (~0) >>> -this.bits;
     }
 };
 

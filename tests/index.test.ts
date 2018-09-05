@@ -94,6 +94,20 @@ describe('constant vectors', () => {
         _.isEqual(Array(n).fill(1), Vector3vl.ones(n).toArray()));
 });
 
+describe('predicates', () => {
+    jsc.property('isLow', vector3vl, v =>
+        v.isLow == v.toArray().every(x => x == -1));
+    
+    jsc.property('isHigh', vector3vl, v =>
+        v.isHigh == v.toArray().every(x => x == 1));
+    
+    jsc.property('isDefined', vector3vl, v =>
+        v.isDefined == v.toArray().some(x => x != 0));
+    
+    jsc.property('isFullyDefined', vector3vl, v =>
+        v.isFullyDefined == v.toArray().every(x => x != 0));
+});
+
 describe('not properties', () => {
     jsc.property('~~a == a', vector3vl, v =>
         v.eq(v.not().not()));
