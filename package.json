@@ -19,11 +19,23 @@
     "ts-jest": "^23.1.4",
     "typescript": "^3.0.3"
   },
+  "homepage": "https://github.com/tilk/js_3vl",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tilk/js_3vl.git"
+  },
   "jest": {
     "transform": {
       "^.+\\.tsx?$": "ts-jest"
     },
     "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
   }
 }
