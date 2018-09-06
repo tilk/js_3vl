@@ -206,11 +206,17 @@ describe('reducing ops', () => {
     jsc.property('|a', vector3vl, v =>
         v.reduceOr().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.or(b), Vector3vl.zero)));
     
+    jsc.property('^a', vector3vl, v =>
+        v.reduceXor().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.xor(b), Vector3vl.zero)));
+    
     jsc.property('~&a', vector3vl, v =>
         v.reduceNand().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.and(b), Vector3vl.one).not()));
     
     jsc.property('~|a', vector3vl, v =>
         v.reduceNor().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.or(b), Vector3vl.zero).not()));
+    
+    jsc.property('~^a', vector3vl, v =>
+        v.reduceXnor().eq(v.toArray().map(x => Vector3vl.make(1, x)).reduce((a, b) => a.xor(b), Vector3vl.zero).not()));
 });
 
 describe('concat', () => {

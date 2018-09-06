@@ -280,23 +280,32 @@ export class Vector3vl {
     }
     reduceAnd() {
         return new Vector3vl(1, 
-            [bitfold((a, b) => (a & b), this._avec, this._lastmask, 1)],
-            [bitfold((a, b) => (a & b), this._bvec, this._lastmask, 1)]);
+            [bitfold((a, b) => a & b, this._avec, this._lastmask, 1)],
+            [bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)]);
     }
     reduceOr() {
         return new Vector3vl(1, 
-            [bitfold((a, b) => (a | b), this._avec, this._lastmask, 0)],
-            [bitfold((a, b) => (a | b), this._bvec, this._lastmask, 0)]);
+            [bitfold((a, b) => a | b, this._avec, this._lastmask, 0)],
+            [bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)]);
     }
     reduceNand() {
         return new Vector3vl(1, 
-            [~bitfold((a, b) => (a & b), this._bvec, this._lastmask, 1)],
-            [~bitfold((a, b) => (a & b), this._avec, this._lastmask, 1)]);
+            [~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)],
+            [~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)]);
     }
     reduceNor() {
         return new Vector3vl(1, 
-            [~bitfold((a, b) => (a | b), this._bvec, this._lastmask, 0)],
-            [~bitfold((a, b) => (a | b), this._avec, this._lastmask, 0)]);
+            [~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)],
+            [~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)]);
+    }
+    reduceXor() {
+        const xes = zip((a, b) => ~a & b, this._avec, this._bvec);
+        const has_x = bitfold((a, b) => a | b, xes, this._lastmask, 0);
+        const v = bitfold((a, b) => a ^ b, this._avec, this._lastmask, 0);
+        return new Vector3vl(1, [v & ~has_x], [v | has_x]);
+    }
+    reduceXnor() {
+        return this.reduceXor().not();
     }
     concat(...vs : Vector3vl[]) {
         return Vector3vl.concat(this, ...vs);
