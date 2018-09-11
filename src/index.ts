@@ -408,6 +408,9 @@ export class Vector3vl {
         }
         return out.reverse().join('');
     }
+    toString() {
+        return "Vector3vl " + this.toBin();
+    }
     eq(v : Vector3vl) {
         if (v._bits != this._bits) return false;
         this.normalize();
