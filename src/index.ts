@@ -200,6 +200,12 @@ export class Vector3vl {
     get bits() : number {
         return this._bits;
     }
+    get msb() : number {
+        return this.get(this._bits - 1);
+    }
+    get lsb() : number {
+        return this.get(0);
+    }
     get(n : number) {
         const bn = bitnum(n);
         const wn = wordnum(n);
