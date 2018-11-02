@@ -469,21 +469,45 @@ export class Mem3vl {
     toJSON() {
         const rep = [];
         const hexbuf = [];
-        const flush = () => {
+        let rleval, rlecnt = 0;
+        const hexflush = () => {
             if (hexbuf.length == 0) return;
             rep.push(hexbuf.join(''));
             hexbuf.splice(0, hexbuf.length);
         };
+        const rleflush = () => {
+            if (rlecnt == 0) return;
+            else if (rlecnt == 1) {
+                if (rleval.length == this._bits) {
+                    hexflush();
+                    rep.push(rleval);
+                } else hexbuf.push(rleval);
+            } else {
+                hexflush();
+                rep.push(rlecnt);
+                rep.push(rleval);
+            }
+            rleval = undefined;
+            rlecnt = 0;
+        };
+        const rlepush = (v) => {
+            if (rleval == v) rlecnt++;
+            else {
+                rleflush();
+                rleval = v;
+                rlecnt = 1;
+            }
+        };
         for (const x of this._data) {
             const hex = x.toHex();
             if (this._bits > 0 && x.eq(Vector3vl.fromHex(hex))) {
-                hexbuf.push(hex);
+                rlepush(hex);
             } else {
-                flush();
-                rep.push(x.toBin());
+                rlepush(x.toBin());
             }
         }
-        flush();
+        rleflush();
+        hexflush();
         return rep;
     }
     static fromJSON(bits, rep) {
@@ -494,8 +518,14 @@ export class Mem3vl {
             else if (x.length == hexlen) return [Vector3vl.fromHex(x)];
             else return Array.apply(null, {length: x.length / hexlen}).map((_, i) => Vector3vl.fromHex(x.slice(i * hexlen, (i+1) * hexlen)));
         };
-        for (const x of rep) {
-            if (typeof x === "string") data.push(...decode(x));
+        for (let i = 0; i < rep.length; i++) {
+            if (typeof rep[i] === "string") data.push(...decode(rep[i]));
+            else if (typeof rep[i] === "number") {
+                const d = decode(rep[i+1]);
+                for (const j of Array(rep[i]).keys())
+                    data.push(...d);
+                i++;
+            }
         }
         return Mem3vl.fromData(data);
     }
