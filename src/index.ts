@@ -468,21 +468,34 @@ export class Mem3vl {
     }
     toJSON() {
         const rep = [];
+        const hexbuf = [];
+        const flush = () => {
+            if (hexbuf.length == 0) return;
+            rep.push(hexbuf.join(''));
+            hexbuf.splice(0, hexbuf.length);
+        };
         for (const x of this._data) {
             const hex = x.toHex();
-            if (x.eq(Vector3vl.fromHex(hex))) rep.push(hex);
-            else rep.push(x.toBin());
+            if (this._bits > 0 && x.eq(Vector3vl.fromHex(hex))) {
+                hexbuf.push(hex);
+            } else {
+                flush();
+                rep.push(x.toBin());
+            }
         }
+        flush();
         return rep;
     }
     static fromJSON(bits, rep) {
+        const hexlen = Math.ceil(bits/4);
         const data = [];
         const decode = (x : string) => {
-            if (x.length == bits) return Vector3vl.fromBin(x);
-            else return Vector3vl.fromHex(x);
+            if (x.length == bits) return [Vector3vl.fromBin(x)];
+            else if (x.length == hexlen) return [Vector3vl.fromHex(x)];
+            else return Array.apply(null, {length: x.length / hexlen}).map((_, i) => Vector3vl.fromHex(x.slice(i * hexlen, (i+1) * hexlen)));
         };
         for (const x of rep) {
-            if (typeof x === "string") data.push(decode(x));
+            if (typeof x === "string") data.push(...decode(x));
         }
         return Mem3vl.fromData(data);
     }
