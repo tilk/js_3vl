@@ -12,12 +12,12 @@
   "author": "Marek Materzok",
   "license": "BSD-2-Clause",
   "devDependencies": {
-    "@types/jest": "^23.3.1",
-    "jest": "^23.5.0",
-    "jsverify": "^0.8.3",
-    "lodash": "^4.17.10",
-    "ts-jest": "^23.1.4",
-    "typescript": "^3.0.3"
+    "@types/jest": "^23.3.9",
+    "jest": "^23.6.0",
+    "jsverify": "^0.8.4",
+    "lodash": "^4.17.11",
+    "ts-jest": "^23.10.4",
+    "typescript": "^3.1.6"
   },
   "homepage": "https://github.com/tilk/js_3vl",
   "repository": {
