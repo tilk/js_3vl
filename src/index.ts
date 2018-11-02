@@ -467,13 +467,20 @@ export class Mem3vl {
         this._data[i] = v;
     }
     toJSON() {
-        const rep = [];
-        const hexbuf = [];
-        let rleval, rlecnt = 0;
+        const rep : (number | string)[] = [];
+        let hexbuf : string[] = [];
+        let rleval : string, rlecnt : number = 0;
         const hexflush = () => {
             if (hexbuf.length == 0) return;
-            rep.push(hexbuf.join(''));
-            hexbuf.splice(0, hexbuf.length);
+            if (hexbuf.reduce((a, b) => a + b.length, 0) == this._bits) { // to avoid confusion
+                const last = hexbuf.pop();
+                if (hexbuf.length > 0)
+                    rep.push(hexbuf.join(''));
+                rep.push(last);
+            } else {
+                rep.push(hexbuf.join(''));
+            }
+            hexbuf = [];
         };
         const rleflush = () => {
             if (rlecnt == 0) return;
@@ -531,6 +538,9 @@ export class Mem3vl {
     }
     toArray() {
         return this._data.slice();
+    }
+    toHex() {
+        return this._data.map(x => x.toHex());
     }
     eq(m : Mem3vl) {
         if (m._bits != this._bits || m._data.length != this._data.length)
