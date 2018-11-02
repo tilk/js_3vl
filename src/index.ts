@@ -437,4 +437,64 @@ export class Vector3vl {
     }
 };
 
+export class Mem3vl {
+    private _bits : number;
+    private _data : Vector3vl[];
+    constructor(bits : number, size : number) {
+        this._bits = bits;
+        this._data = Array(size).fill(Vector3vl.xes(bits));
+    }
+    static fromData(data : Vector3vl[]) {
+        if (data.length == 0) return new Mem3vl(0, 0);
+        const ret = new Mem3vl(data[0].bits, data.length);
+        for (const i in data) {
+            console.assert(data[i].bits == ret._bits);
+            ret._data[i] = data[i];
+        }
+        return ret;
+    }
+    get bits() {
+        return this._bits;
+    }
+    get words() {
+        return this._data.length;
+    }
+    get(i : number) {
+        return this._data[i];
+    }
+    set(i : number, v : Vector3vl) {
+        console.assert(v.bits == this._bits);
+        this._data[i] = v;
+    }
+    toJSON() {
+        const rep = [];
+        for (const x of this._data) {
+            const hex = x.toHex();
+            if (x.eq(Vector3vl.fromHex(hex))) rep.push(hex);
+            else rep.push(x.toBin());
+        }
+        return rep;
+    }
+    static fromJSON(bits, rep) {
+        const data = [];
+        const decode = (x : string) => {
+            if (x.length == bits) return Vector3vl.fromBin(x);
+            else return Vector3vl.fromHex(x);
+        };
+        for (const x of rep) {
+            if (typeof x === "string") data.push(decode(x));
+        }
+        return Mem3vl.fromData(data);
+    }
+    toArray() {
+        return this._data.slice();
+    }
+    eq(m : Mem3vl) {
+        if (m._bits != this._bits || m._data.length != this._data.length)
+            return false;
+        for (const i in this._data) if (!m._data[i].eq(this._data[i])) return false;
+        return true;
+    }
+};
+
 

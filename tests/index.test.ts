@@ -1,5 +1,5 @@
 
-import { Vector3vl } from '../src/index';
+import { Vector3vl, Mem3vl } from '../src/index';
 import * as _ from 'lodash';
 import * as jsc from 'jsverify';
 
@@ -15,8 +15,15 @@ const myarray = <A>(arb : jsc.ArbitraryLike<A>) => jsc.bless({
 const myarrays = <A>(n : number, arb : jsc.ArbitraryLike<A>) => jsc.bless({
     generator: jsc.generator.bless((size : number) =>
         jsc.generator.tuple(Array(n).fill(jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator))))(size)),
-    shrink: jsc.shrink.tuple(Array(n).fill(jsc.shrink.array(arb.shrink))),
+    shrink: jsc.shrink.tuple(Array(n).fill(jsc.shrink.array(arb.shrink))), // TODO breaks same size invariant
     show: a => jsc.show.tuple(Array(n).fill(b => jsc.show.array(arb.show, b)), a)
+});
+
+const myrandarrays = <A>(arb : jsc.ArbitraryLike<A>) => jsc.bless({
+    generator: jsc.generator.bless((size : number) =>
+        jsc.generator.array(jsc.generator.tuple(Array(jsc.random(0, size)).fill(arb.generator)))(size)),
+    shrink: jsc.shrink.array(jsc.shrink.array(arb.shrink)), // TODO breaks same size invariant
+    show: a => jsc.show.array(b => jsc.show.array(arb.show, b), a)
 });
 
 const trit = jsc.elements([-1, 0, 1]);
@@ -29,6 +36,9 @@ const octaltxt = myarray(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) =
     .smap(a => a.join(''), s => s.split(''))
 const hextxt = myarray(jsc.elements(['x'].concat(Array.from(Array(16), (a, i) => i.toString(16)))))
     .smap(a => a.join(''), s => s.split(''))
+const randarrays3vl = myrandarrays(trit);
+const randvectors3vl = randarrays3vl.smap(x => x.map(a => Vector3vl.fromArray(a)), x => x.map(v => v.toArray()));
+const mem3vl = randvectors3vl.smap(a => Mem3vl.fromData(a), m => m.toArray());
 
 describe('relation to arrays', () => {
     jsc.property('fromArray.toArray', array3vl, a =>
@@ -245,5 +255,9 @@ describe('slice', () => {
 
     jsc.property('a.slice(0, n) ++ a.slice(n) == a', vector3vl, jsc.nat(10), (v, n) =>
         v.slice(0, n).concat(v.slice(n)).eq(v));
+});
+
+describe('memory json', () => {
+    jsc.property('m.toJSON().fromJSON() == m', mem3vl, (m) => m.eq(Mem3vl.fromJSON(m.bits, m.toJSON())));
 });
 
