@@ -1,15 +1,15 @@
 
-function zip(f : (x : number, y : number) => number, a : Int32Array, b : Int32Array) {
+function zip(f : (x : number, y : number) => number, a : Uint32Array, b : Uint32Array) {
     return a.map((x, i) => f(x, b[i]));
 }
 
 function zip4(
         f : (x : number, y : number, z : number, q : number) => number, 
-        a : Int32Array, b : Int32Array, c : Int32Array, d : Int32Array) {
+        a : Uint32Array, b : Uint32Array, c : Uint32Array, d : Uint32Array) {
     return a.map((x, i) => f(x, b[i], c[i], d[i]));
 }
 
-function bitfold(f : (x : number, y : number) => number, a : Int32Array, lastmask : number, neutral : number) {
+function bitfold(f : (x : number, y : number) => number, a : Uint32Array, lastmask : number, neutral : number) {
     if (a.length == 0) return (neutral == 1) ? 1 : 0;
     let acc = a[a.length-1];
     if (neutral == 1) acc |= ~lastmask;
@@ -44,9 +44,9 @@ Object.seal(fromBinMap);
 
 export class Vector3vl {
     private _bits : number;
-    private _avec : Int32Array;
-    private _bvec : Int32Array;
-    private constructor(bits : number, avec : Int32Array, bvec : Int32Array) {
+    private _avec : Uint32Array;
+    private _bvec : Uint32Array;
+    private constructor(bits : number, avec : Uint32Array, bvec : Uint32Array) {
         this._bits = bits;
         this._avec = avec;
         this._bvec = bvec;
@@ -62,8 +62,8 @@ export class Vector3vl {
         }
         const words = (bits+31)/32 | 0;
         return new Vector3vl(bits,
-            new Int32Array(words).fill(iva),
-            new Int32Array(words).fill(ivb));
+            new Uint32Array(words).fill(iva),
+            new Uint32Array(words).fill(ivb));
     }
     static zeros(bits : number) {
         return Vector3vl.make(bits, -1);
@@ -84,7 +84,7 @@ export class Vector3vl {
     static concat(...vs : Vector3vl[]) {
         const sumbits = vs.reduce((y, x) => x.bits + y, 0);
         const words = (sumbits + 31) >>> 5;
-        let bits = 0, idx = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
+        let bits = 0, idx = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
         for (const v of vs) {
             v.normalize();
             if (bitnum(bits) == 0) {
@@ -115,7 +115,7 @@ export class Vector3vl {
     }
     static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
+        let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
             if (bitnum(m) == 0)
@@ -140,7 +140,7 @@ export class Vector3vl {
     }
     static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
+        let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
             if (bitnum(m) == 0)
@@ -204,14 +204,14 @@ export class Vector3vl {
     get isHigh() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
-        const vechigh = (vec : Int32Array) =>
-            vec.slice(0, vec.length-1).every(x => x == ~0) && (vec[vec.length-1] & lastmask) == lastmask;
+        const vechigh = (vec : Uint32Array) =>
+            vec.slice(0, vec.length-1).every(x => ~x == 0) && (vec[vec.length-1] & lastmask) == lastmask;
         return vechigh(this._avec) && vechigh(this._bvec);
     }
     get isLow() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
-        const veclow = (vec : Int32Array) =>
+        const veclow = (vec : Uint32Array) =>
             vec.slice(0, vec.length-1).every(x => x == 0) && (vec[vec.length-1] & lastmask) == 0;
         return veclow(this._avec) && veclow(this._bvec);
     }
@@ -219,7 +219,7 @@ export class Vector3vl {
         if (this._bits == 0) return false;
         const dvec = zip((a, b) => a ^ b, this._avec, this._bvec);
         dvec[dvec.length-1] |= ~this._lastmask;
-        return !dvec.every(x => x == ~0);
+        return !dvec.every(x => ~x == 0);
     }
     get isFullyDefined() : boolean {
         if (this._bits == 0) return true;
@@ -274,29 +274,29 @@ export class Vector3vl {
     }
     reduceAnd() {
         return new Vector3vl(1, 
-            Int32Array.of(bitfold((a, b) => a & b, this._avec, this._lastmask, 1)),
-            Int32Array.of(bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)));
+            Uint32Array.of(bitfold((a, b) => a & b, this._avec, this._lastmask, 1)),
+            Uint32Array.of(bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)));
     }
     reduceOr() {
         return new Vector3vl(1, 
-            Int32Array.of(bitfold((a, b) => a | b, this._avec, this._lastmask, 0)),
-            Int32Array.of(bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)));
+            Uint32Array.of(bitfold((a, b) => a | b, this._avec, this._lastmask, 0)),
+            Uint32Array.of(bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)));
     }
     reduceNand() {
         return new Vector3vl(1, 
-            Int32Array.of(~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)),
-            Int32Array.of(~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)));
+            Uint32Array.of(~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)),
+            Uint32Array.of(~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)));
     }
     reduceNor() {
         return new Vector3vl(1, 
-            Int32Array.of(~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)),
-            Int32Array.of(~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)));
+            Uint32Array.of(~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)),
+            Uint32Array.of(~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)));
     }
     reduceXor() {
         const xes = zip((a, b) => ~a & b, this._avec, this._bvec);
         const has_x = bitfold((a, b) => a | b, xes, this._lastmask, 0);
         const v = bitfold((a, b) => a ^ b, this._avec, this._lastmask, 0);
-        return new Vector3vl(1, Int32Array.of(v & ~has_x), Int32Array.of(v | has_x));
+        return new Vector3vl(1, Uint32Array.of(v & ~has_x), Uint32Array.of(v | has_x));
     }
     reduceXnor() {
         return this.reduceXor().not();
@@ -315,7 +315,7 @@ export class Vector3vl {
             return new Vector3vl(end - start, avec, bvec);
         } else {
             const words = (end - start + 31) >>> 5;
-            const avec = new Int32Array(words), bvec = new Int32Array(words);
+            const avec = new Uint32Array(words), bvec = new Uint32Array(words);
             let k = 0;
             avec[k] = this._avec[start >> 5] >>> start;
             bvec[k] = this._bvec[start >> 5] >>> start;
@@ -389,7 +389,7 @@ export class Vector3vl {
     toOct() {
         const out = [];
         for (const v of this.toIteratorAnySkip(3)) {
-            if (1 & v & ~(v >> 3)) out.push('x');
+            if (0x7 & v & ~(v >> 3)) out.push('x');
             else out.push((v >> 3).toString());
         }
         return out.reverse().join('');
