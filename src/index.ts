@@ -1,15 +1,15 @@
 
-function zip(f : (x : number, y : number) => number, a : number[], b : number[]) {
+function zip(f : (x : number, y : number) => number, a : Int32Array, b : Int32Array) {
     return a.map((x, i) => f(x, b[i]));
 }
 
 function zip4(
         f : (x : number, y : number, z : number, q : number) => number, 
-        a : number[], b : number[], c : number[], d : number[]) {
+        a : Int32Array, b : Int32Array, c : Int32Array, d : Int32Array) {
     return a.map((x, i) => f(x, b[i], c[i], d[i]));
 }
 
-function bitfold(f : (x : number, y : number) => number, a : number[], lastmask : number, neutral : number) {
+function bitfold(f : (x : number, y : number) => number, a : Int32Array, lastmask : number, neutral : number) {
     if (a.length == 0) return (neutral == 1) ? 1 : 0;
     let acc = a[a.length-1];
     if (neutral == 1) acc |= ~lastmask;
@@ -44,9 +44,9 @@ Object.seal(fromBinMap);
 
 export class Vector3vl {
     private _bits : number;
-    private _avec : number[];
-    private _bvec : number[];
-    private constructor(bits, avec, bvec) {
+    private _avec : Int32Array;
+    private _bvec : Int32Array;
+    private constructor(bits : number, avec : Int32Array, bvec : Int32Array) {
         this._bits = bits;
         this._avec = avec;
         this._bvec = bvec;
@@ -62,8 +62,8 @@ export class Vector3vl {
         }
         const words = (bits+31)/32 | 0;
         return new Vector3vl(bits,
-            Array(words).fill(iva),
-            Array(words).fill(ivb));
+            new Int32Array(words).fill(iva),
+            new Int32Array(words).fill(ivb));
     }
     static zeros(bits : number) {
         return Vector3vl.make(bits, -1);
@@ -82,120 +82,108 @@ export class Vector3vl {
         return Vector3vl.make(1, b ? 1 : -1);
     }
     static concat(...vs : Vector3vl[]) {
-        let bits = 0, avec = [], bvec = [];
+        const sumbits = vs.reduce((y, x) => x.bits + y, 0);
+        const words = (sumbits + 31) >>> 5;
+        let bits = 0, idx = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
         for (const v of vs) {
             v.normalize();
             if (bitnum(bits) == 0) {
-                avec.splice(avec.length, 0, ...v._avec);
-                bvec.splice(bvec.length, 0, ...v._bvec);
+                avec.set(v._avec, idx + 1);
+                bvec.set(v._bvec, idx + 1);
                 bits += v._bits;
+                idx += (v._bits + 31) >>> 5;
             } else {
                 for (const k in v._avec) {
-                    avec[avec.length-1] |= v._avec[k] << bits;
-                    avec.push(v._avec[k] >>> -bits);
-                    bvec[bvec.length-1] |= v._bvec[k] << bits;
-                    bvec.push(v._bvec[k] >>> -bits);
+                    avec[idx] |= v._avec[k] << bits;
+                    bvec[idx] |= v._bvec[k] << bits;
+                    idx++;
+                    if (idx == words) break;
+                    avec[idx] = v._avec[k] >>> -bits;
+                    bvec[idx] = v._bvec[k] >>> -bits;
                 }
                 bits += v._bits;
-                if (avec.length > (((bits + 31) / 32) | 0)) {
-                    avec.pop();
-                    bvec.pop();
+                if (idx + 1 > (bits + 31) >>> 5) {
+                    idx--;
                 }
             }
         }
         return new Vector3vl(bits, avec, bvec);
     }
-    static fromIterator(iter : Iterable<number>, skip : number, nbits? : number) {
+    static fromIterator(iter : Iterable<number>, skip : number, nbits : number) {
         if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip, nbits);
         else return Vector3vl.fromIteratorAnySkip(iter, skip, nbits);
     }
-    static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits? : number) {
-        let m = 0, k = -1, avec = [], bvec = [];
+    static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits : number) {
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
-            if (bitnum(m) == 0) {
-                avec.push(0);
-                bvec.push(0);
+            if (bitnum(m) == 0)
                 k++;
-            }
             avec[k] |= ((v >>> skip) & mask) << m;
             bvec[k] |= (v & mask) << m;
             if (((mask << m) >>> m) != mask) {
-                avec.push(((v >>> skip) & mask) >>> -m);
-                bvec.push((v & mask) >>> -m);
                 k++;
+                avec[k] = ((v >>> skip) & mask) >>> -m;
+                bvec[k] = (v & mask) >>> -m;
             }
             m += skip;
         }
-        if (nbits !== undefined) {
-            const words = (nbits+31)/32 | 0;
-            const last_x = m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1)));
-            if (last_x && bitnum(m)) bvec[bvec.length-1] |= (-1) << m;
-            if (avec.length < words) {
-                avec = avec.concat(Array(words - avec.length).fill(0));
-                bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
-            } else {
-                avec.splice(words);
-                bvec.splice(words);
+        if (m < nbits) {
+            const last_x = m > 0 && !(avec[k] & (1 << (m-1))) && (bvec[k] & (1 << (m-1)));
+            if (last_x && bitnum(m)) bvec[k] |= (-1) << m;
+            if (last_x && k + 1 < words) {
+                bvec.fill(-1, k + 1);
             }
-            m = nbits;
         }
-        return new Vector3vl(m, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
-    static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits? : number) {
-        let m = 0, k = -1, avec = [], bvec = [];
+    static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits : number) {
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1, avec = new Int32Array(words), bvec = new Int32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
-            if (bitnum(m) == 0) {
-                avec.push(0);
-                bvec.push(0);
+            if (bitnum(m) == 0)
                 k++;
-            }
             avec[k] |= ((v >>> skip) & mask) << m;
             bvec[k] |= (v & mask) << m;
             m += skip;
         }
-        if (nbits !== undefined) {
-            const words = (nbits+31)/32 | 0;
-            const last_x = Boolean(m > 0 && !(avec.slice(-1)[0] & (1 << (m-1))) && (bvec.slice(-1)[0] & (1 << (m-1))));
-            if (last_x && bitnum(m)) bvec[bvec.length-1] |= (-1) << m;
-            if (avec.length < words) {
-                avec = avec.concat(Array(words - avec.length).fill(0));
-                bvec = bvec.concat(Array(words - bvec.length).fill(last_x ? -1 : 0));
-            } else {
-                avec.splice(words);
-                bvec.splice(words);
+        if (m < nbits) {
+            const last_x = m > 0 && !(avec[k] & (1 << (m-1))) && (bvec[k] & (1 << (m-1)));
+            if (last_x && bitnum(m)) bvec[k] |= (-1) << m;
+            if (last_x && k + 1 < words) {
+                bvec.fill(-1, k + 1);
             }
-            m = nbits;
         }
-        return new Vector3vl(m, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
     static fromArray(data : number[]) {
         function* f(): Iterable<number> {
             for (const x of data) yield x + 1 + Number(x > 0);
         }
-        return Vector3vl.fromIteratorPow2(f(), 1);
+        return Vector3vl.fromIteratorPow2(f(), 1, data.length);
     }
     static fromBin(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromBinMap[data[i]];
         }
-        return Vector3vl.fromIteratorPow2(f(), 1, nbits);
+        return Vector3vl.fromIteratorPow2(f(), 1, nbits !== undefined ? nbits : data.length);
     }
     static fromOct(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromOctMap[data[i]];
         }
-        return Vector3vl.fromIteratorAnySkip(f(), 3, nbits);
+        return Vector3vl.fromIteratorAnySkip(f(), 3, nbits !== undefined ? nbits : data.length * 3);
     }
     static fromHex(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
                 yield fromHexMap[data[i]];
         }
-        return Vector3vl.fromIteratorPow2(f(), 4, nbits);
+        return Vector3vl.fromIteratorPow2(f(), 4, nbits !== undefined ? nbits : data.length * 4);
     }
     get bits() : number {
         return this._bits;
@@ -216,14 +204,14 @@ export class Vector3vl {
     get isHigh() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
-        const vechigh = (vec : number[]) =>
+        const vechigh = (vec : Int32Array) =>
             vec.slice(0, vec.length-1).every(x => x == ~0) && (vec[vec.length-1] & lastmask) == lastmask;
         return vechigh(this._avec) && vechigh(this._bvec);
     }
     get isLow() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
-        const veclow = (vec : number[]) =>
+        const veclow = (vec : Int32Array) =>
             vec.slice(0, vec.length-1).every(x => x == 0) && (vec[vec.length-1] & lastmask) == 0;
         return veclow(this._avec) && veclow(this._bvec);
     }
@@ -286,29 +274,29 @@ export class Vector3vl {
     }
     reduceAnd() {
         return new Vector3vl(1, 
-            [bitfold((a, b) => a & b, this._avec, this._lastmask, 1)],
-            [bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)]);
+            Int32Array.of(bitfold((a, b) => a & b, this._avec, this._lastmask, 1)),
+            Int32Array.of(bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)));
     }
     reduceOr() {
         return new Vector3vl(1, 
-            [bitfold((a, b) => a | b, this._avec, this._lastmask, 0)],
-            [bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)]);
+            Int32Array.of(bitfold((a, b) => a | b, this._avec, this._lastmask, 0)),
+            Int32Array.of(bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)));
     }
     reduceNand() {
         return new Vector3vl(1, 
-            [~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)],
-            [~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)]);
+            Int32Array.of(~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)),
+            Int32Array.of(~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)));
     }
     reduceNor() {
         return new Vector3vl(1, 
-            [~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)],
-            [~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)]);
+            Int32Array.of(~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)),
+            Int32Array.of(~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)));
     }
     reduceXor() {
         const xes = zip((a, b) => ~a & b, this._avec, this._bvec);
         const has_x = bitfold((a, b) => a | b, xes, this._lastmask, 0);
         const v = bitfold((a, b) => a ^ b, this._avec, this._lastmask, 0);
-        return new Vector3vl(1, [v & ~has_x], [v | has_x]);
+        return new Vector3vl(1, Int32Array.of(v & ~has_x), Int32Array.of(v | has_x));
     }
     reduceXnor() {
         return this.reduceXor().not();
@@ -326,18 +314,18 @@ export class Vector3vl {
             const bvec = this._bvec.slice(start >>> 5, (end + 31) >>> 5);
             return new Vector3vl(end - start, avec, bvec);
         } else {
-            const avec = [0], bvec = [0];
-            for (let idx = start >> 5; idx <= (end >>> 5); idx++) {
-                avec[avec.length-1] |= this._avec[idx] << -start;
-                bvec[bvec.length-1] |= this._bvec[idx] << -start;
-                avec.push(this._avec[idx] >>> start);
-                bvec.push(this._bvec[idx] >>> start);
-            }
-            avec.splice(0, 1);
-            bvec.splice(0, 1);
-            if (avec.length > (((end-start+31)/32)|0)) {
-                avec.pop();
-                bvec.pop();
+            const words = (end - start + 31) >>> 5;
+            const avec = new Int32Array(words), bvec = new Int32Array(words);
+            let k = 0;
+            avec[k] = this._avec[start >> 5] >>> start;
+            bvec[k] = this._bvec[start >> 5] >>> start;
+            for (let idx = (start >> 5) + 1; idx <= (end >>> 5); idx++) {
+                avec[k] |= this._avec[idx] << -start;
+                bvec[k] |= this._bvec[idx] << -start;
+                k++;
+                if (k == words) break;
+                avec[k] = this._avec[idx] >>> start;
+                bvec[k] = this._bvec[idx] >>> start;
             }
             return new Vector3vl(end - start, avec, bvec);
         }
