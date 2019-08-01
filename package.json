@@ -5,9 +5,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepare": "npm run build",
+    "prepare": "npm run build; npm run doc",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "doc": "typedoc --out dist/docs src/"
   },
   "author": "Marek Materzok",
   "license": "BSD-2-Clause",
@@ -17,6 +18,7 @@
     "jsverify": "^0.8.4",
     "lodash": "^4.17.15",
     "ts-jest": "^24.0.2",
+    "typedoc": "^0.15.0",
     "typescript": "^3.5.3"
   },
   "homepage": "https://github.com/tilk/js_3vl",

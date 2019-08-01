@@ -42,16 +42,71 @@ for (let i = 0; i < 16; i++)
     fromHexMap[i.toString(16)] = i | (i << 4);
 Object.seal(fromBinMap);
 
+/**
+ * Type for initialization values.
+ * * false, -1, '0' mean logical 0,
+ * * 0, 'x' mean undefined value,
+ * * true, 1, '1' mean logical 1.
+ */
+type InitType = 1 | 0 | -1 | boolean | '1' | '0' | 'x';
+
+/** 
+ * Three-value logic vectors.
+ *
+ * This is a data class -- its contents are not mutable. Operations on logic
+ * vectors return a freshly allocated vector.
+ *
+ * The internal representation is two bit vectors: bit vector A and B.
+ * The value at position _n_ is encoded by two bits, one at position _n_ in
+ * bit vector A, the other at same position in bit vector B. The bit
+ * combinations have the following meanings:
+ *
+ * * A: 0, B: 0 -- logical 0,
+ * * A: 0, B: 1 -- undefined value, "x",
+ * * A: 1, B: 1 -- logical 1.
+ */
 export class Vector3vl {
+
+    /**
+     * Number of bits in the vector.
+     */
     private _bits : number;
+
+    /**
+     * Bit vector A.
+     */
     private _avec : Uint32Array;
+
+    /**
+     * Bit vector B.
+     */
     private _bvec : Uint32Array;
+
+    /**
+     * Private constructor for three-value logic vectors. 
+     *
+     * **Only for internal use.**
+     *
+     * @param bits Number of bits in the vector.
+     * @param avec Bit vector A.
+     * @param bvec Bit vector B.
+     */
     private constructor(bits : number, avec : Uint32Array, bvec : Uint32Array) {
         this._bits = bits;
         this._avec = avec;
         this._bvec = bvec;
     }
-    static make(bits : number, init) {
+
+    /**
+     * Construct a vector with a constant value at each position.
+     *
+     * @param bits Number of bits in the vector.
+     * @param init Initializer. Recognized values:
+     * * false, -1, '0' for logical 0,
+     * * 0, 'x' for undefined value,
+     * * true, 1, '1' for logical 1.
+     */
+    static make(bits : number, init : InitType) {
         bits = bits | 0;
         let iva, ivb;
         switch(init) {
@@ -65,22 +120,67 @@ export class Vector3vl {
             new Uint32Array(words).fill(iva),
             new Uint32Array(words).fill(ivb));
     }
+
+    /** 
+     * Construct a vector containing only zeros.
+     *
+     * @param bits Number of bits in the vector.
+     */
     static zeros(bits : number) {
         return Vector3vl.make(bits, -1);
     }
+
+    /** 
+     * Construct a vector containing only ones.
+     *
+     * @param bits Number of bits in the vector.
+     */
     static ones(bits : number) {
         return Vector3vl.make(bits, 1);
     }
+
+    /** 
+     * Construct a vector containing only undefined values.
+     *
+     * @param bits Number of bits in the vector.
+     */
     static xes(bits : number) {
         return Vector3vl.make(bits, 0);
     }
+
+    /**
+     * An empty vector. 
+     */
     static empty = Vector3vl.zeros(0);
+
+    /**
+     * A single one.
+     */
     static one = Vector3vl.ones(1);
+
+    /**
+     * A single zero.
+     */
     static zero = Vector3vl.zeros(1);
+
+    /**
+     * A single undefined value.
+     */
     static x = Vector3vl.xes(1);
+
+    /**
+     * Construct a singleton vector containing _b_.
+     */
     static fromBool(b : boolean) {
         return Vector3vl.make(1, b ? 1 : -1);
     }
+
+    /**
+     * Concatenate vectors into a single big vector.
+     *
+     * @param vs Vectors to concatenate.
+     *           Arguments are ordered least significant bit first.
+     */
     static concat(...vs : Vector3vl[]) {
         const sumbits = vs.reduce((y, x) => x.bits + y, 0);
         const words = (sumbits + 31) >>> 5;
@@ -109,10 +209,34 @@ export class Vector3vl {
         }
         return new Vector3vl(bits, avec, bvec);
     }
+
+    /**
+     * Construct a vector from an iterable.
+     *
+     * This function calls [[fromIteratorAnySkip]] or [[fromIteratorPow2]].
+     *
+     * @param iter Iterable returning initialization values, least to most
+     *             significant. First _skip_ bits go to vector B, next
+     *             _skip_ bits go to vector A.
+     * @param skip Number of bits in a single iterator step. 1 to 16.
+     * @param nbits Number of bits in the vector.
+     */
     static fromIterator(iter : Iterable<number>, skip : number, nbits : number) {
         if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip, nbits);
         else return Vector3vl.fromIteratorAnySkip(iter, skip, nbits);
     }
+
+    /**
+     * Construct a vector from an iterable.
+     *
+     * This function is more generic, but slower, than [[fromIteratorPow2]].
+     *
+     * @param iter Iterable returning initialization values, least to most
+     *             significant. First _skip_ bits go to vector B, next
+     *             _skip_ bits go to vector A.
+     * @param skip Number of bits in a single iterator step. 1 to 16.
+     * @param nbits Number of bits in the vector.
+     */
     static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
         let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
@@ -138,6 +262,20 @@ export class Vector3vl {
         }
         return new Vector3vl(nbits, avec, bvec);
     }
+
+    /**
+     * Construct a vector from an iterable.
+     *
+     * This function is limited to power of 2 _skip_ values.
+     * For generic version, see [[fromIteratorAnySkip]].
+     *
+     * @param iter Iterable returning initialization values, least to most
+     *             significant. First _skip_ bits go to vector B, next
+     *             _skip_ bits go to vector A.
+     * @param skip Number of bits in a single iterator step.
+     *             Limited to powers of 2: 1, 2, 4, 8, 16.
+     * @param nbits Number of bits in the vector.
+     */
     static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
         let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
@@ -158,12 +296,39 @@ export class Vector3vl {
         }
         return new Vector3vl(nbits, avec, bvec);
     }
+
+    /**
+     * Construct a vector from an array of numbers.
+     *
+     * The following interpretation is used:
+     * * -1 for logical 0,
+     * * 0 for undefined value,
+     * * 1 for logical 1.
+     *
+     * @param data Input array.
+     */
     static fromArray(data : number[]) {
         function* f(): Iterable<number> {
             for (const x of data) yield x + 1 + Number(x > 0);
         }
         return Vector3vl.fromIteratorPow2(f(), 1, data.length);
     }
+
+    /**
+     * Construct a vector from a binary string.
+     *
+     * Three characters are accepted:
+     * * '0' for logical 0,
+     * * 'x' for undefined value,
+     * * '1' for logical 1.
+     *
+     * If _nbits_ is given, _data_ is either truncated, or extended with
+     * undefined values.
+     *
+     * @param data The binary string to be parsed.
+     * @param nbits Number of bits in the vector. If omitted, the resulting
+     *              vector has number of bits equal to the length of _data_.
+     */
     static fromBin(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
@@ -171,6 +336,21 @@ export class Vector3vl {
         }
         return Vector3vl.fromIteratorPow2(f(), 1, nbits !== undefined ? nbits : data.length);
     }
+
+    /**
+     * Construct a vector from an octal number.
+     *
+     * Characters '0' to '7' and 'x' are accepted. The character 'x'
+     * means three undefined bits.
+     *
+     * If _nbits_ is given, _data_ is either truncated, or extended with
+     * undefined values.
+     *
+     * @param data The octal string to be parsed.
+     * @param nbits Number of bits in the vector. If omitted, the resulting
+     *              vector has number of bits equal to the length of _data_
+     *              times three.
+     */
     static fromOct(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
@@ -178,6 +358,21 @@ export class Vector3vl {
         }
         return Vector3vl.fromIteratorAnySkip(f(), 3, nbits !== undefined ? nbits : data.length * 3);
     }
+
+    /**
+     * Construct a vector from a hexadecimal number.
+     *
+     * Characters '0' to '9', 'a' to 'f' and 'x' are accepted. The character
+     * 'x' means three undefined bits.
+     *
+     * If _nbits_ is given, _data_ is either truncated, or extended with
+     * undefined values.
+     *
+     * @param data The hexadecimal string to be parsed.
+     * @param nbits Number of bits in the vector. If omitted, the resulting
+     *              vector has number of bits equal to the length of _data_
+     *              times four.
+     */
     static fromHex(data : string, nbits? : number) {
         function* f() : Iterable<number> {
             for (let i = data.length - 1; i >= 0; i--)
@@ -185,15 +380,31 @@ export class Vector3vl {
         }
         return Vector3vl.fromIteratorPow2(f(), 4, nbits !== undefined ? nbits : data.length * 4);
     }
+
+    /**
+     * Number of bits in the vector.
+     */
     get bits() : number {
         return this._bits;
     }
+
+    /**
+     * Most significant bit in the vector. Returns -1, 0 or 1.
+     */
     get msb() : number {
         return this.get(this._bits - 1);
     }
+
+    /**
+     * Least significant bit in the vector. Returns -1, 0 or 1.
+     */
     get lsb() : number {
         return this.get(0);
     }
+
+    /**
+     * Gets _n_th value in the vector. Returns -1, 0 or 1.
+     */
     get(n : number) {
         const bn = bitnum(n);
         const wn = wordnum(n);
@@ -201,6 +412,10 @@ export class Vector3vl {
         const b = (this._bvec[wn] >>> bn) & 1;
         return a + b - 1;
     }
+
+    /**
+     * Tests if the vector is all ones.
+     */
     get isHigh() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
@@ -208,6 +423,10 @@ export class Vector3vl {
             vec.slice(0, vec.length-1).every(x => ~x == 0) && (vec[vec.length-1] & lastmask) == lastmask;
         return vechigh(this._avec) && vechigh(this._bvec);
     }
+    
+    /**
+     * Tests if the vector is all zeros.
+     */
     get isLow() : boolean {
         if (this._bits == 0) return true;
         const lastmask = this._lastmask;
@@ -215,30 +434,62 @@ export class Vector3vl {
             vec.slice(0, vec.length-1).every(x => x == 0) && (vec[vec.length-1] & lastmask) == 0;
         return veclow(this._avec) && veclow(this._bvec);
     }
+
+    /**
+     * Tests if there is any defined bit in the vector.
+     */
     get isDefined() : boolean {
         if (this._bits == 0) return false;
         const dvec = zip((a, b) => a ^ b, this._avec, this._bvec);
         dvec[dvec.length-1] |= ~this._lastmask;
         return !dvec.every(x => ~x == 0);
     }
+
+    /**
+     * Tests if every bit in the vector is defined.
+     */
     get isFullyDefined() : boolean {
         if (this._bits == 0) return true;
         const dvec = zip((a, b) => a ^ b, this._avec, this._bvec);
         dvec[dvec.length-1] &= this._lastmask;
         return !dvec.some(x => Boolean(x));
     }
+
+    /**
+     * Bitwise AND of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     and(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
             zip((a, b) => a & b, v._avec, this._avec),
             zip((a, b) => a & b, v._bvec, this._bvec));
     }
+
+    /**
+     * Bitwise OR of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     or(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
             zip((a, b) => a | b, v._avec, this._avec),
             zip((a, b) => a | b, v._bvec, this._bvec));
     }
+
+    /**
+     * Bitwise XOR of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     xor(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
@@ -247,18 +498,42 @@ export class Vector3vl {
             zip4((a1, a2, b1, b2) => (a1 & b1) ^ (a2 | b2),
                  v._avec, v._bvec, this._avec, this._bvec));
     }
+
+    /**
+     * Bitwise NAND of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     nand(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
             zip((a, b) => ~(a & b), v._bvec, this._bvec),
             zip((a, b) => ~(a & b), v._avec, this._avec));
     }
+
+    /**
+     * Bitwise NOR of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     nor(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
             zip((a, b) => ~(a | b), v._bvec, this._bvec),
             zip((a, b) => ~(a | b), v._avec, this._avec));
     }
+
+    /**
+     * Bitwise XNOR of two vectors.
+     *
+     * The vectors need to be the same bit length.
+     *
+     * @param v The other vector.
+     */
     xnor(v : Vector3vl) {
         console.assert(v._bits == this._bits);
         return new Vector3vl(this._bits,
@@ -267,43 +542,111 @@ export class Vector3vl {
             zip4((a1, a2, b1, b2) => ~((a1 | b1) & (a2 ^ b2)),
                  v._avec, v._bvec, this._avec, this._bvec));
     }
+
+    /**
+     * Bitwise NOT of a vector. */
     not() {
         return new Vector3vl(this._bits,
             this._bvec.map(a => ~a),
             this._avec.map(a => ~a));
     }
+
+    /**
+     * Reducing AND of a vector.
+     *
+     * ANDs all bits of the vector together, producing a single bit.
+     *
+     * @returns Singleton vector.
+     */
     reduceAnd() {
         return new Vector3vl(1, 
             Uint32Array.of(bitfold((a, b) => a & b, this._avec, this._lastmask, 1)),
             Uint32Array.of(bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)));
     }
+    
+    /**
+     * Reducing OR of a vector.
+     *
+     * ORs all bits of the vector together, producing a single bit.
+     *
+     * @returns Singleton vector.
+     */
     reduceOr() {
         return new Vector3vl(1, 
             Uint32Array.of(bitfold((a, b) => a | b, this._avec, this._lastmask, 0)),
             Uint32Array.of(bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)));
     }
+    
+    /**
+     * Reducing NAND of a vector.
+     *
+     * NANDs all bits of the vector together, producing a single bit.
+     *
+     * @returns Singleton vector.
+     */
     reduceNand() {
         return new Vector3vl(1, 
             Uint32Array.of(~bitfold((a, b) => a & b, this._bvec, this._lastmask, 1)),
             Uint32Array.of(~bitfold((a, b) => a & b, this._avec, this._lastmask, 1)));
     }
+    
+    /**
+     * Reducing NOR of a vector.
+     *
+     * NORs all bits of the vector together, producing a single bit.
+     *
+     * @returns Singleton vector.
+     */
     reduceNor() {
         return new Vector3vl(1, 
             Uint32Array.of(~bitfold((a, b) => a | b, this._bvec, this._lastmask, 0)),
             Uint32Array.of(~bitfold((a, b) => a | b, this._avec, this._lastmask, 0)));
     }
+    
+    /**
+     * Reducing XOR of a vector.
+     *
+     * XORs all bits of the vector together, producing a single bit.
+     *
+     * @returns Singleton vector.
+     */
     reduceXor() {
         const xes = zip((a, b) => ~a & b, this._avec, this._bvec);
         const has_x = bitfold((a, b) => a | b, xes, this._lastmask, 0);
         const v = bitfold((a, b) => a ^ b, this._avec, this._lastmask, 0);
         return new Vector3vl(1, Uint32Array.of(v & ~has_x), Uint32Array.of(v | has_x));
     }
+    
+    /**
+     * Reducing XNOR of a vector.
+     *
+     * XNORs all bits of the vector together, producing a single bit.
+     *
+     * @return Singleton vector.
+     */
     reduceXnor() {
         return this.reduceXor().not();
     }
+
+    /**
+     * Concatenates vectors, including this one, into a single vector.
+     *
+     * @param vs The other vectors.
+     */
     concat(...vs : Vector3vl[]) {
         return Vector3vl.concat(this, ...vs);
     }
+
+    /**
+     * Return a subvector.
+     *
+     * Uses same conventions as the slice function for JS arrays.
+     *
+     * @param start Number of the first bit to include in the result.
+     *              If omitted, first bit of the vector is used.
+     * @param end Number of the last bit to include in the result, plus one.
+     *            If omitted, last bit of the vector is used.
+     */ 
     slice(start? : number, end? : number) {
         if (start === undefined) start = 0;
         if (end === undefined) end = this._bits;
@@ -330,10 +673,30 @@ export class Vector3vl {
             return new Vector3vl(end - start, avec, bvec);
         }
     }
+
+    /**
+     * Returns an iterator describing the vector.
+     * 
+     * In each returned value, first _skip_ bits come from the vector B,
+     * the next _skip_ bits come from the vector A.
+     *
+     * This function calls [[toIteratorAnySkip]] or [[toIteratorPow2]].
+     *
+     * @param skip Number of bits in a single iterator step. 1 to 16.
+     */
     toIterator(skip : number) {
         if ((skip & (skip - 1)) == 0) return this.toIteratorPow2(skip);
         else return this.toIteratorAnySkip(skip);
     }
+
+    /**
+     * Returns an iterator describing the vector.
+     *
+     * In each returned value, first _skip_ bits come from the vector B,
+     * the next _skip_ bits come from the vector A.
+     *
+     * @param skip Number of bits in a single iterator step. 1 to 16.
+     */ 
     *toIteratorAnySkip(skip : number) {
         this.normalize();
         const sm = (1 << skip) - 1;
@@ -355,6 +718,15 @@ export class Vector3vl {
             }
         }
     }
+
+    /**
+     * Returns an iterator describing the vector.
+     *
+     * In each returned value, first _skip_ bits come from the vector B,
+     * the next _skip_ bits come from the vector A.
+     *
+     * @param skip Number of bits in a single iterator step. 1, 2, 4, 8 or 16.
+     */ 
     *toIteratorPow2(skip : number) {
         this.normalize();
         const sm = (1 << skip) - 1;
@@ -371,6 +743,11 @@ export class Vector3vl {
             }
         }
     }
+
+    /** Returns an array representation of the vector.
+     *
+     * The resulting array contains values -1, 0, 1.
+     */
     toArray() {
         const out = [];
         for (const v of this.toIteratorPow2(1)) {
@@ -378,6 +755,14 @@ export class Vector3vl {
         }
         return out;
     }
+
+    /** Returns a binary representation of the vector.
+     *
+     * Three characters are used:
+     * * '0' for logical 0,
+     * * 'x' for undefined value,
+     * * '1' for logical 1.
+     */
     toBin() {
         const out = [];
         for (const v of this.toIteratorPow2(1)) {
@@ -386,6 +771,12 @@ export class Vector3vl {
         }
         return out.reverse().join('');
     }
+
+    /** Returns an octal representation of the vector.
+     *
+     * Returned characters can be '0' to '7' and 'x'. An 'x' value is returned
+     * if any of the three bits is undefined.
+     */
     toOct() {
         const out = [];
         for (const v of this.toIteratorAnySkip(3)) {
@@ -394,6 +785,12 @@ export class Vector3vl {
         }
         return out.reverse().join('');
     }
+    
+    /** Returns an hexadecimal representation of the vector.
+     *
+     * Returned characters can be '0' to '9', 'a' to 'f' and 'x'. An 'x' value
+     * is returned if any of the four bits is undefined.
+     */
     toHex() {
         const out = [];
         for (const v of this.toIteratorPow2(4)) {
@@ -402,9 +799,13 @@ export class Vector3vl {
         }
         return out.reverse().join('');
     }
+
+    /** Returns a string describing the vector. */
     toString() {
         return "Vector3vl " + this.toBin();
     }
+
+    /** Compares two vectors for equality. */
     eq(v : Vector3vl) {
         if (v._bits != this._bits) return false;
         this.normalize();
@@ -415,11 +816,25 @@ export class Vector3vl {
         }
         return true;
     }
+
+    /** Normalize the vector.
+     * 
+     * Because of the representation used, if _bits_ is not a multiple
+     * of 32, some internal bits do not contribute to the vector value,
+     * and for performance reasons can get arbitrary values in the course
+     * of computations. This procedure clears these bits.
+     * For internal use.
+     */
     normalize() {
         const lastmask = this._lastmask;
         this._avec[this._avec.length - 1] &= lastmask;
         this._bvec[this._bvec.length - 1] &= lastmask;
     }
+
+    /** Mask for unused bits.
+     *
+     * For internal use.
+     */
     private get _lastmask() {
         return (~0) >>> -this.bits;
     }
