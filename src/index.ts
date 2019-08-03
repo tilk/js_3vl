@@ -319,10 +319,24 @@ export class Vector3vl {
      * @param data Input array.
      */
     static fromArray(data : number[]) {
-        function* f(): Iterable<number> {
-            for (const x of data) yield x + 1 + Number(x > 0);
+        // copy-paste'y code for performance
+        const nbits = data.length;
+        const skip = 1;
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1,
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
+        const mask = (1 << skip) - 1;
+        for (const x of data) {
+            const v = x + 1 + Number(x > 0);
+            if (bitnum(m) == 0)
+                k++;
+            avec[k] |= ((v >>> skip) & mask) << m;
+            bvec[k] |= (v & mask) << m;
+            m += skip;
         }
-        return Vector3vl.fromIteratorPow2(f(), 1, data.length);
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
 
     /**
@@ -808,9 +822,22 @@ export class Vector3vl {
      * The resulting array contains values -1, 0, 1.
      */
     toArray() {
-        const out = [];
-        for (const v of this.toIteratorPow2(1)) {
+        // copy-paste'y code for performance
+        this.normalize();
+        const skip = 1;
+        const sm = (1 << skip) - 1;
+        let bit = 0, k = 0, m = sm, out = [];
+        while (bit < this._bits) {
+            const a = (this._avec[k] & m) >>> bit;
+            const b = (this._bvec[k] & m) >>> bit;
+            const v = (a << skip) | b;
             out.push(v - 1 - Number(v > 1));
+            m <<= skip;
+            bit += skip;
+            if (m == 0) {
+                k++;
+                m = sm;
+            }
         }
         return out;
     }
@@ -823,10 +850,18 @@ export class Vector3vl {
      * * '1' for logical 1.
      */
     toBin() {
+        // copy-paste'y code for performance
         const out = [];
-        for (const v of this.toIteratorPow2(1)) {
-            if (1 & v & ~(v >> 1)) out.push('x');
-            else out.push((v >> 1).toString());
+        let bit = 0, k = 0;
+        while (bit < this._bits) {
+            const a = '00000000000000000000000000000000' 
+                    + this._avec[k].toString(2);
+            const x = this._avec[k] ^ this._bvec[k];
+            k++;
+            for (let b = 0; b < 32 && bit < this._bits; b++, bit++) {
+                if (x & (1 << b)) out.push('x');
+                else out.push(a[a.length - 1 - b]);
+            }
         }
         return out.reverse().join('');
     }
@@ -837,10 +872,28 @@ export class Vector3vl {
      * if any of the three bits is undefined.
      */
     toOct() {
-        const out = [];
-        for (const v of this.toIteratorAnySkip(3)) {
+        // copy-paste'y code for performance
+        this.normalize();
+        const skip = 3;
+        const sm = (1 << skip) - 1;
+        let bit = 0, k = 0, m = sm, out = [];
+        while (bit < this._bits) {
+            let a = (this._avec[k] & m) >>> bit;
+            let b = (this._bvec[k] & m) >>> bit;
+            if ((m >>> bit) != sm && k + 1 != this._avec.length) {
+                const m1 = sm >> -bit;
+                a |= (this._avec[k + 1] & m1) << -bit;
+                b |= (this._bvec[k + 1] & m1) << -bit;
+            }
+            const v = (a << skip) | b;
             if (0x7 & v & ~(v >> 3)) out.push('x');
             else out.push((v >> 3).toString());
+            m <<= skip;
+            bit += skip;
+            if (m == 0) {
+                k++;
+                m = (sm << bit);
+            }
         }
         return out.reverse().join('');
     }
@@ -851,10 +904,18 @@ export class Vector3vl {
      * is returned if any of the four bits is undefined.
      */
     toHex() {
+        // copy-paste'y code for performance
+        this.normalize();
         const out = [];
-        for (const v of this.toIteratorPow2(4)) {
-            if (0xf & v & ~(v >> 4)) out.push('x');
-            else out.push((v >> 4).toString(16));
+        let bit = 0, k = 0;
+        while (bit < this._bits) {
+            const a = '00000000' + this._avec[k].toString(16);
+            const x = this._avec[k] ^ this._bvec[k];
+            k++;
+            for (let b = 0; b < 8 && bit < this._bits; b++, bit += 4) {
+                if (x & (0xf << 4 * b)) out.push('x');
+                else out.push(a[a.length - 1 - b]);
+            }
         }
         return out.reverse().join('');
     }
