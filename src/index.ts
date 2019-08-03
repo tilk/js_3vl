@@ -31,16 +31,34 @@ function bitnum(n : number) {
     return n & 0x1f;
 }
 
-const fromBinMap = {'0': 0b00, '1': 0b11, 'x': 0b01};
-Object.seal(fromBinMap);
-const fromOctMap = {'x': 0b000111};
-for (let i = 0; i < 8; i++)
-    fromOctMap[i.toString()] = i | (i << 3);
-Object.seal(fromBinMap);
-const fromHexMap = {'x': 0b00001111};
-for (let i = 0; i < 16; i++)
-    fromHexMap[i.toString(16)] = i | (i << 4);
-Object.seal(fromBinMap);
+function fillRest(m : number, k : number, words : number, 
+                  avec : Uint32Array, bvec : Uint32Array) {
+    const last_x = m > 0 && !(avec[k] & (1 << (m-1)))
+                         &&  (bvec[k] & (1 << (m-1)));
+    if (last_x && bitnum(m)) bvec[k] |= (-1) << m;
+    if (last_x && k + 1 < words) {
+        bvec.fill(-1, k + 1);
+    }
+}
+
+function makeMap(bits : number, depth : number) {
+    const ret = {};
+    function g(what : string, val : number) {
+        ret[what] = val;
+        if (what.length * bits >= depth)
+            return;
+        for (let i = 0; i < (1 << bits); i += 1)
+            g(what + i.toString(1 << bits), (val << bits) | i | (i << 16));
+        g(what + 'x', (val << bits) | ((1 << bits) - 1));
+    }
+    g("", 0);
+    Object.seal(ret);
+    return ret;
+}
+
+const fromBinMap = makeMap(1, 8);
+const fromOctMap = makeMap(3, 3);
+const fromHexMap = makeMap(4, 8);
 
 /**
  * Type for initialization values.
@@ -222,7 +240,8 @@ export class Vector3vl {
      * @param nbits Number of bits in the vector.
      */
     static fromIterator(iter : Iterable<number>, skip : number, nbits : number) {
-        if ((skip & (skip - 1)) == 0) return Vector3vl.fromIteratorPow2(iter, skip, nbits);
+        if ((skip & (skip - 1)) == 0)
+            return Vector3vl.fromIteratorPow2(iter, skip, nbits);
         else return Vector3vl.fromIteratorAnySkip(iter, skip, nbits);
     }
 
@@ -239,7 +258,9 @@ export class Vector3vl {
      */
     static fromIteratorAnySkip(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
+        let m = 0, k = -1,
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
             if (bitnum(m) == 0)
@@ -253,13 +274,7 @@ export class Vector3vl {
             }
             m += skip;
         }
-        if (m < nbits) {
-            const last_x = m > 0 && !(avec[k] & (1 << (m-1))) && (bvec[k] & (1 << (m-1)));
-            if (last_x && bitnum(m)) bvec[k] |= (-1) << m;
-            if (last_x && k + 1 < words) {
-                bvec.fill(-1, k + 1);
-            }
-        }
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
         return new Vector3vl(nbits, avec, bvec);
     }
 
@@ -278,7 +293,9 @@ export class Vector3vl {
      */
     static fromIteratorPow2(iter : Iterable<number>, skip : number, nbits : number) {
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, avec = new Uint32Array(words), bvec = new Uint32Array(words);
+        let m = 0, k = -1,
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
         const mask = (1 << skip) - 1;
         for (const v of iter) {
             if (bitnum(m) == 0)
@@ -287,13 +304,7 @@ export class Vector3vl {
             bvec[k] |= (v & mask) << m;
             m += skip;
         }
-        if (m < nbits) {
-            const last_x = m > 0 && !(avec[k] & (1 << (m-1))) && (bvec[k] & (1 << (m-1)));
-            if (last_x && bitnum(m)) bvec[k] |= (-1) << m;
-            if (last_x && k + 1 < words) {
-                bvec.fill(-1, k + 1);
-            }
-        }
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
         return new Vector3vl(nbits, avec, bvec);
     }
 
@@ -330,11 +341,26 @@ export class Vector3vl {
      *              vector has number of bits equal to the length of _data_.
      */
     static fromBin(data : string, nbits? : number) {
-        function* f() : Iterable<number> {
-            for (let i = data.length - 1; i >= 0; i--)
-                yield fromBinMap[data[i]];
+        // copy-paste'y code for performance
+        const skip = 1;
+        if (nbits === undefined) nbits = data.length * skip;
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1, 
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
+        for (let i = data.length; i > 0; ) {
+            const frag = data.slice(Math.max(0, i-8), i);
+            i -= frag.length;
+            const v = fromBinMap[frag];
+            if (bitnum(m) == 0)
+                k++;
+            const mask = (1 << skip * frag.length) - 1;
+            avec[k] |= ((v >>> 16) & mask) << m;
+            bvec[k] |= (v & mask) << m;
+            m += skip * frag.length;
         }
-        return Vector3vl.fromIteratorPow2(f(), 1, nbits !== undefined ? nbits : data.length);
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
 
     /**
@@ -352,11 +378,29 @@ export class Vector3vl {
      *              times three.
      */
     static fromOct(data : string, nbits? : number) {
-        function* f() : Iterable<number> {
-            for (let i = data.length - 1; i >= 0; i--)
-                yield fromOctMap[data[i]];
+        // copy-paste'y code for performance
+        const skip = 3;
+        if (nbits === undefined) nbits = data.length * skip;
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1,
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
+        const mask = (1 << skip) - 1;
+        for (let i = data.length - 1; i >= 0; i--) {
+            const v = fromOctMap[data[i]];
+            if (bitnum(m) == 0)
+                k++;
+            avec[k] |= ((v >>> 16) & mask) << m;
+            bvec[k] |= (v & mask) << m;
+            if (((mask << m) >>> m) != mask) {
+                k++;
+                avec[k] = ((v >>> 16) & mask) >>> -m;
+                bvec[k] = (v & mask) >>> -m;
+            }
+            m += skip;
         }
-        return Vector3vl.fromIteratorAnySkip(f(), 3, nbits !== undefined ? nbits : data.length * 3);
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
 
     /**
@@ -374,11 +418,26 @@ export class Vector3vl {
      *              times four.
      */
     static fromHex(data : string, nbits? : number) {
-        function* f() : Iterable<number> {
-            for (let i = data.length - 1; i >= 0; i--)
-                yield fromHexMap[data[i]];
+        // copy-paste'y code for performance
+        const skip = 4;
+        if (nbits === undefined) nbits = data.length * skip;
+        const words = (nbits + 31) >>> 5;
+        let m = 0, k = -1, 
+            avec = new Uint32Array(words),
+            bvec = new Uint32Array(words);
+        for (let i = data.length; i > 0; ) {
+            const frag = data.slice(Math.max(0, i-2), i);
+            i -= frag.length;
+            const v = fromHexMap[frag];
+            if (bitnum(m) == 0)
+                k++;
+            const mask = (1 << skip * frag.length) - 1;
+            avec[k] |= ((v >>> 16) & mask) << m;
+            bvec[k] |= (v & mask) << m;
+            m += skip * frag.length;
         }
-        return Vector3vl.fromIteratorPow2(f(), 4, nbits !== undefined ? nbits : data.length * 4);
+        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        return new Vector3vl(nbits, avec, bvec);
     }
 
     /**
