@@ -259,5 +259,6 @@ describe('slice', () => {
 
 describe('memory json', () => {
     jsc.property('m.toJSON().fromJSON() == m', mem3vl, (m) => m.eq(Mem3vl.fromJSON(m.bits, m.toJSON())));
+    jsc.property('m.toArray().fromData() == m', mem3vl, (m) => m.eq(Mem3vl.fromData(m.toArray())));
 });
 
