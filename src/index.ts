@@ -60,6 +60,77 @@ const fromBinMap = makeMap(1, 8);
 const fromOctMap = makeMap(3, 3);
 const fromHexMap = makeMap(4, 8);
 
+function toHexInternal(start : number, bits : number, avec : Uint32Array, bvec : Uint32Array) {
+    // copy-paste'y code for performance
+    const out = [];
+    let bit = 0, k = start;
+    while (bit < bits) {
+        const a = '00000000' + avec[k].toString(16);
+        const x = avec[k] ^ bvec[k];
+        k++;
+        for (let b = 0; b < 8 && bit < bits; b++, bit += 4) {
+            if (x & (0xf << 4 * b)) out.push('x');
+            else out.push(a[a.length - 1 - b]);
+        }
+    }
+    return out.reverse().join('');
+}
+
+function toBinInternal(start : number, bits : number, avec : Uint32Array, bvec : Uint32Array) {
+    // copy-paste'y code for performance
+    const out = [];
+    let bit = 0, k = start;
+    while (bit < bits) {
+        const a = '00000000000000000000000000000000' 
+                + avec[k].toString(2);
+        const x = avec[k] ^ bvec[k];
+        k++;
+        for (let b = 0; b < 32 && bit < bits; b++, bit++) {
+            if (x & (1 << b)) out.push('x');
+            else out.push(a[a.length - 1 - b]);
+        }
+    }
+    return out.reverse().join('');
+}
+
+function fromHexInternal(data : string, start : number, nbits : number, avec : Uint32Array, bvec : Uint32Array) {
+    // copy-paste'y code for performance
+    const skip = 4;
+    const words = (nbits + 31) >>> 5;
+    let m = 0, k = -1 + start;
+    for (let i = data.length; i > 0; ) {
+        const frag = data.slice(Math.max(0, i-2), i);
+        i -= frag.length;
+        const v = fromHexMap[frag];
+        if (bitnum(m) == 0)
+            k++;
+        const mask = (1 << skip * frag.length) - 1;
+        avec[k] |= ((v >>> 16) & mask) << m;
+        bvec[k] |= (v & mask) << m;
+        m += skip * frag.length;
+    }
+    if (m < nbits) fillRest(m, k, words, avec, bvec);
+}
+
+function fromBinInternal(data : string, start: number, nbits : number, avec : Uint32Array, bvec : Uint32Array) {
+    // copy-paste'y code for performance
+    const skip = 1;
+    const words = (nbits + 31) >>> 5;
+    let m = 0, k = -1 + start;
+    for (let i = data.length; i > 0; ) {
+        const frag = data.slice(Math.max(0, i-8), i);
+        i -= frag.length;
+        const v = fromBinMap[frag];
+        if (bitnum(m) == 0)
+            k++;
+        const mask = (1 << skip * frag.length) - 1;
+        avec[k] |= ((v >>> 16) & mask) << m;
+        bvec[k] |= (v & mask) << m;
+        m += skip * frag.length;
+    }
+    if (m < nbits) fillRest(m, k, words, avec, bvec);
+}
+
 /**
  * Type for initialization values.
  * * false, -1, '0' mean logical 0,
@@ -355,25 +426,11 @@ export class Vector3vl {
      *              vector has number of bits equal to the length of _data_.
      */
     static fromBin(data : string, nbits? : number) {
-        // copy-paste'y code for performance
-        const skip = 1;
-        if (nbits === undefined) nbits = data.length * skip;
+        if (nbits === undefined) nbits = data.length;
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, 
-            avec = new Uint32Array(words),
-            bvec = new Uint32Array(words);
-        for (let i = data.length; i > 0; ) {
-            const frag = data.slice(Math.max(0, i-8), i);
-            i -= frag.length;
-            const v = fromBinMap[frag];
-            if (bitnum(m) == 0)
-                k++;
-            const mask = (1 << skip * frag.length) - 1;
-            avec[k] |= ((v >>> 16) & mask) << m;
-            bvec[k] |= (v & mask) << m;
-            m += skip * frag.length;
-        }
-        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        const avec = new Uint32Array(words),
+              bvec = new Uint32Array(words);
+        fromBinInternal(data, 0, nbits, avec, bvec);
         return new Vector3vl(nbits, avec, bvec);
     }
 
@@ -432,25 +489,11 @@ export class Vector3vl {
      *              times four.
      */
     static fromHex(data : string, nbits? : number) {
-        // copy-paste'y code for performance
-        const skip = 4;
-        if (nbits === undefined) nbits = data.length * skip;
+        if (nbits === undefined) nbits = data.length * 4;
         const words = (nbits + 31) >>> 5;
-        let m = 0, k = -1, 
-            avec = new Uint32Array(words),
-            bvec = new Uint32Array(words);
-        for (let i = data.length; i > 0; ) {
-            const frag = data.slice(Math.max(0, i-2), i);
-            i -= frag.length;
-            const v = fromHexMap[frag];
-            if (bitnum(m) == 0)
-                k++;
-            const mask = (1 << skip * frag.length) - 1;
-            avec[k] |= ((v >>> 16) & mask) << m;
-            bvec[k] |= (v & mask) << m;
-            m += skip * frag.length;
-        }
-        if (m < nbits) fillRest(m, k, words, avec, bvec);
+        const avec = new Uint32Array(words),
+              bvec = new Uint32Array(words);
+        fromHexInternal(data, 0, nbits, avec, bvec);
         return new Vector3vl(nbits, avec, bvec);
     }
 
@@ -850,20 +893,7 @@ export class Vector3vl {
      * * '1' for logical 1.
      */
     toBin() {
-        // copy-paste'y code for performance
-        const out = [];
-        let bit = 0, k = 0;
-        while (bit < this._bits) {
-            const a = '00000000000000000000000000000000' 
-                    + this._avec[k].toString(2);
-            const x = this._avec[k] ^ this._bvec[k];
-            k++;
-            for (let b = 0; b < 32 && bit < this._bits; b++, bit++) {
-                if (x & (1 << b)) out.push('x');
-                else out.push(a[a.length - 1 - b]);
-            }
-        }
-        return out.reverse().join('');
+        return toBinInternal(0, this._bits, this._avec, this._bvec);
     }
 
     /** Returns an octal representation of the vector.
@@ -904,20 +934,7 @@ export class Vector3vl {
      * is returned if any of the four bits is undefined.
      */
     toHex() {
-        // copy-paste'y code for performance
-        this.normalize();
-        const out = [];
-        let bit = 0, k = 0;
-        while (bit < this._bits) {
-            const a = '00000000' + this._avec[k].toString(16);
-            const x = this._avec[k] ^ this._bvec[k];
-            k++;
-            for (let b = 0; b < 8 && bit < this._bits; b++, bit += 4) {
-                if (x & (0xf << 4 * b)) out.push('x');
-                else out.push(a[a.length - 1 - b]);
-            }
-        }
-        return out.reverse().join('');
+        return toHexInternal(0, this._bits, this._avec, this._bvec);
     }
 
     /** Returns a string describing the vector. */
@@ -966,17 +983,20 @@ export class Mem3vl {
     private _wpc : number;
     private _avec : Uint32Array;
     private _bvec : Uint32Array;
-    constructor(bits : number, size : number) {
+    constructor(bits : number, size : number, val? : number) {
+        if (val === undefined) val = 0;
         this._bits = bits | 0;
         this._size = size | 0;
         this._wpc = (bits+31)/32 | 0;
-        this._avec = new Uint32Array(size * this._wpc).fill(0);
-        this._bvec = new Uint32Array(size * this._wpc).fill(~0);
+        this._avec = new Uint32Array(size * this._wpc).fill(val > 0 ? ~0 : 0);
+        this._bvec = new Uint32Array(size * this._wpc).fill(val >= 0 ? ~0 : 0);
+        if (this._size) this.set(this._size - 1, this.get(this._size - 1)); // TODO faster
     }
     static fromData(data : Vector3vl[]) {
         if (data.length == 0) return new Mem3vl(0, 0);
         const ret = new Mem3vl(data[0].bits, data.length);
         for (const i in data) {
+            data[i].normalize();
             console.assert(data[i].bits == ret._bits);
             for (let j = 0; j < ret._wpc; j++) {
                 const idx = Number(i)*ret._wpc + j;
@@ -1000,6 +1020,7 @@ export class Mem3vl {
     }
     set(i : number, v : Vector3vl) {
         console.assert(v.bits == this._bits);
+        v.normalize();
         for (let j = 0; j < this._wpc; j++) {
             this._avec[i*this._wpc+j] = (v as any)._avec[j];
             this._bvec[i*this._wpc+j] = (v as any)._bvec[j];
@@ -1045,12 +1066,21 @@ export class Mem3vl {
             }
         };
         for (let i = 0; i < this._size; i++) {
-            const x = this.get(i); // TODO faster
-            const hex = x.toHex();
-            if (this._bits > 0 && x.eq(Vector3vl.fromHex(hex))) {
-                rlepush(hex);
+            const check = () => {
+                for (let j = 0; j < this._wpc; j++) {
+                    const xx = this._avec[i*this._wpc + j] ^ this._bvec[i*this._wpc + j];
+                    for (let k = 0; k < 4; k++) {
+                        const m = 0xff << (k*16);
+                        const xm = xx & m;
+                        if (xm != m || xm != 0) return false;
+                    }
+                }
+                return true;
+            }
+            if (this._bits > 0 && check()) {
+                rlepush(toHexInternal(i*this._wpc, this._bits, this._avec, this._bvec));
             } else {
-                rlepush(x.toBin());
+                rlepush(toBinInternal(i*this._wpc, this._bits, this._avec, this._bvec));
             }
         }
         rleflush();
@@ -1059,22 +1089,44 @@ export class Mem3vl {
     }
     static fromJSON(bits, rep) {
         const hexlen = Math.ceil(bits/4);
-        const data = [];
-        const decode = (x : string) => {
-            if (x.length == bits) return [Vector3vl.fromBin(x)];
-            else if (x.length == hexlen) return [Vector3vl.fromHex(x)];
-            else return Array.apply(null, {length: x.length / hexlen}).map((_, i) => Vector3vl.fromHex(x.slice(i * hexlen, (i+1) * hexlen)));
-        };
+        let size = 0;
+        const xsize = (x : string) => {
+            if (x.length == bits || x.length == hexlen) return 1;
+            else return x.length/hexlen;
+        }
         for (let i = 0; i < rep.length; i++) {
-            if (typeof rep[i] === "string") data.push(...decode(rep[i]));
-            else if (typeof rep[i] === "number") {
-                const d = decode(rep[i+1]);
-                for (const j of Array(rep[i]).keys())
-                    data.push(...d);
+            if (typeof rep[i] === "string") {
+                size += xsize(rep[i]);
+            } else if (typeof rep[i] === "number") {
+                size += rep[i] * xsize(rep[i+1]);
                 i++;
             }
         }
-        return Mem3vl.fromData(data);
+        const ret = new Mem3vl(bits, size, -1);
+        let w = 0;
+        const decode = (x : string) => {
+            if (x.length == bits) {
+                fromBinInternal(x, w, bits, ret._avec, ret._bvec);
+                w += ret._wpc;
+            } else if (x.length == hexlen) {
+                fromHexInternal(x, w, bits, ret._avec, ret._bvec);
+                w += ret._wpc;
+            } else {
+                for (let i = 0; i < x.length / hexlen; i++) {
+                    fromHexInternal(x.slice(i*hexlen, (i+1)*hexlen), w, bits, ret._avec, ret._bvec);
+                    w += ret._wpc;
+                }
+            }
+        };
+        for (let i = 0; i < rep.length; i++) {
+            if (typeof rep[i] === "string") decode(rep[i]);
+            else if (typeof rep[i] === "number") {
+                for (const j of Array(rep[i]).keys())
+                    decode(rep[i+1]);
+                i++;
+            }
+        }
+        return ret;
     }
     toArray() {
         return Array(this._size).fill(0).map((a,i) => this.get(i));
