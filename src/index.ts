@@ -668,6 +668,14 @@ export class Vector3vl {
     }
 
     /**
+     * Return a vector with 1 on locations with x, the rest with 0.
+     */
+    xmask() {
+        const v = zip((a, b) => a ^ b, this._avec, this._bvec);
+        return new Vector3vl(this._bits, v, v);
+    }
+
+    /**
      * Reducing AND of a vector.
      *
      * ANDs all bits of the vector together, producing a single bit.

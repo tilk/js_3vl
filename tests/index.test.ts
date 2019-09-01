@@ -257,6 +257,15 @@ describe('slice', () => {
         v.slice(0, n).concat(v.slice(n)).eq(v));
 });
 
+describe('xmask', () => {
+    jsc.property('a | a.xmask() fully defined', vector3vl, v =>
+        v.xmask().or(v).isFullyDefined);
+    jsc.property('a & ~a.xmask() fully defined', vector3vl, v =>
+        v.xmask().not().and(v).isFullyDefined);
+    jsc.property('a ^ a.xmask() == a', vector3vl, v =>
+        v.xmask().xor(v).eq(v));
+});
+
 describe('memory json', () => {
     jsc.property('m.toJSON().fromJSON() == m', mem3vl, (m) => m.eq(Mem3vl.fromJSON(m.bits, m.toJSON())));
     jsc.property('m.toArray().fromData() == m', mem3vl, (m) => m.eq(Mem3vl.fromData(m.toArray())));
