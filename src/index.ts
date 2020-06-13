@@ -1161,6 +1161,7 @@ export interface Display3vlInterface {
     read(data : string, nbits? : number) : Vector3vl;
     show(data : Vector3vl) : string;
     validate(data : string) : boolean;
+    size(bits : number) : number;
 };
 
 export class Display3vlWithRegex {
@@ -1190,6 +1191,9 @@ export class Display3vlHex extends Display3vlWithRegex implements Display3vlInte
     show(data : Vector3vl) : string {
         return data.toHex();
     }
+    size(bits : number) : number {
+        return Math.ceil(bits / 4);
+    }
 };
 
 export class Display3vlBin extends Display3vlWithRegex implements Display3vlInterface {
@@ -1207,6 +1211,9 @@ export class Display3vlBin extends Display3vlWithRegex implements Display3vlInte
     show(data : Vector3vl) : string {
         return data.toBin();
     }
+    size(bits : number) : number {
+        return bits;
+    }
 };
 
 export class Display3vlOct extends Display3vlWithRegex implements Display3vlInterface {
@@ -1223,6 +1230,9 @@ export class Display3vlOct extends Display3vlWithRegex implements Display3vlInte
     }
     show(data : Vector3vl) : string {
         return data.toOct();
+    }
+    size(bits : number) : number {
+        return Math.ceil(bits / 3);
     }
 };
 
@@ -1255,6 +1265,9 @@ export class Display3vl {
     }
     validate(name : string, data : string) {
         return this.displays[name].validate(data);
+    }
+    size(name : string, bits : number) : number {
+        return this.displays[name].size(bits);
     }
 };
 

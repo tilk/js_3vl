@@ -305,5 +305,15 @@ describe('display3vl', () => {
     jsc.property('octal validate', octaltxt, s => disp.validate('oct', s));
 
     jsc.property('hexadecimal validate', hextxt, s => disp.validate('hex', s));
+
+    jsc.property('binary size', binarytxt, s => disp.size('bin', Vector3vl.fromBin(s).bits) == s.length);
+
+    jsc.property('octal size', octaltxt, s => disp.size('oct', Vector3vl.fromOct(s).bits) == s.length);
+    
+    jsc.property('hexadecimal size', hextxt, s => disp.size('hex', Vector3vl.fromHex(s).bits) == s.length);
+    
+    jsc.property('octal size fractional', binarytxt, s => disp.size('oct', Vector3vl.fromBin(s).bits) == Math.ceil(s.length / 3));
+
+    jsc.property('hexadecimal size fractional', binarytxt, s => disp.size('hex', Vector3vl.fromBin(s).bits) == Math.ceil(s.length / 4));
 });
 
