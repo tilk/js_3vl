@@ -1203,27 +1203,29 @@ class Display3vlOct implements Display3vlInterface {
     }
 };
 
-export namespace Display3vl {
-    const displays : Record<string, Display3vlInterface> = {};
-    export function addDisplay(display : Display3vlInterface) {
-        displays[display.name] = display;
+export class Display3vl {
+    private readonly displays : Record<string, Display3vlInterface> = {};
+    constructor() {
+        this.addDisplay(new Display3vlHex());
+        this.addDisplay(new Display3vlBin());
+        this.addDisplay(new Display3vlOct());
     }
-    export function usableDisplays(kind : 'read' | 'show', bits : number) : string[] {
+    addDisplay(display : Display3vlInterface) {
+        this.displays[display.name] = display;
+    }
+    usableDisplays(kind : 'read' | 'show', bits : number) : string[] {
         const ret : Display3vlInterface[] = [];
-        for (let iface of Object.values(displays)) {
+        for (let iface of Object.values(this.displays)) {
             if (iface.can(kind, bits)) ret.push(iface);
         }
         return ret.sort((x,y) => x.sort - y.sort ? x.sort - y.sort : x.name.localeCompare(y.name))
                   .map(x => x.name);
     }
-    export function show(name : string, data : Vector3vl) : string {
-        return displays[name].show(data);
+    show(name : string, data : Vector3vl) : string {
+        return this.displays[name].show(data);
     }
-    export function read(name : string, data : string, nbits? : number) : Vector3vl {
-        return displays[name].read(data, nbits);
+    read(name : string, data : string, nbits? : number) : Vector3vl {
+        return this.displays[name].read(data, nbits);
     }
-    addDisplay(new Display3vlHex());
-    addDisplay(new Display3vlBin());
-    addDisplay(new Display3vlOct());
 };
 

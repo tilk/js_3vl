@@ -272,30 +272,32 @@ describe('memory json', () => {
 });
 
 describe('display3vl', () => {
+    const disp = new Display3vl();
+
     jsc.property('binary', binarytxt, s =>
-        s === Display3vl.show('bin', Vector3vl.fromBin(s)) &&
-        s === Display3vl.read('bin', s).toBin());
+        s === disp.show('bin', Vector3vl.fromBin(s)) &&
+        s === disp.read('bin', s).toBin());
 
     jsc.property('octal', octaltxt, s =>
-        s === Display3vl.show('oct', Vector3vl.fromOct(s)) &&
-        s === Display3vl.read('oct', s).toOct());
+        s === disp.show('oct', Vector3vl.fromOct(s)) &&
+        s === disp.read('oct', s).toOct());
 
     jsc.property('hexadecimal', hextxt, s =>
-        s === Display3vl.show('hex', Vector3vl.fromHex(s)) &&
-        s === Display3vl.read('hex', s).toHex());
+        s === disp.show('hex', Vector3vl.fromHex(s)) &&
+        s === disp.read('hex', s).toHex());
 
     jsc.property('binary sized', binarytxt, jsc.nat(100), (s, n) =>
-        Vector3vl.fromBin(s, n).eq(Display3vl.read('bin', s, n)));
+        Vector3vl.fromBin(s, n).eq(disp.read('bin', s, n)));
 
     jsc.property('octal sized', octaltxt, jsc.nat(100), (s, n) =>
-        Vector3vl.fromOct(s, n).eq(Display3vl.read('oct', s, n)));
+        Vector3vl.fromOct(s, n).eq(disp.read('oct', s, n)));
 
     jsc.property('hexadecimal sized', hextxt, jsc.nat(100), (s, n) =>
-        Vector3vl.fromHex(s, n).eq(Display3vl.read('hex', s, n)));
+        Vector3vl.fromHex(s, n).eq(disp.read('hex', s, n)));
 
     test('usable displays', () => {
-        expect(Display3vl.usableDisplays('read', 1)).toEqual(['bin','hex','oct']);
-        expect(Display3vl.usableDisplays('show', 1)).toEqual(['bin','hex','oct']);
+        expect(disp.usableDisplays('read', 1)).toEqual(['bin','hex','oct']);
+        expect(disp.usableDisplays('show', 1)).toEqual(['bin','hex','oct']);
     });
 });
 
