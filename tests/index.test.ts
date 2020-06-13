@@ -1,5 +1,5 @@
 
-import { Vector3vl, Mem3vl } from '../src/index';
+import { Vector3vl, Mem3vl, Display3vl } from '../src/index';
 import * as _ from 'lodash';
 import * as jsc from 'jsverify';
 
@@ -269,5 +269,33 @@ describe('xmask', () => {
 describe('memory json', () => {
     jsc.property('m.toJSON().fromJSON() == m', mem3vl, (m) => m.eq(Mem3vl.fromJSON(m.bits, m.toJSON())));
     jsc.property('m.toArray().fromData() == m', mem3vl, (m) => m.eq(Mem3vl.fromData(m.toArray())));
+});
+
+describe('display3vl', () => {
+    jsc.property('binary', binarytxt, s =>
+        s === Display3vl.show('bin', Vector3vl.fromBin(s)) &&
+        s === Display3vl.read('bin', s).toBin());
+
+    jsc.property('octal', octaltxt, s =>
+        s === Display3vl.show('oct', Vector3vl.fromOct(s)) &&
+        s === Display3vl.read('oct', s).toOct());
+
+    jsc.property('hexadecimal', hextxt, s =>
+        s === Display3vl.show('hex', Vector3vl.fromHex(s)) &&
+        s === Display3vl.read('hex', s).toHex());
+
+    jsc.property('binary sized', binarytxt, jsc.nat(100), (s, n) =>
+        Vector3vl.fromBin(s, n).eq(Display3vl.read('bin', s, n)));
+
+    jsc.property('octal sized', octaltxt, jsc.nat(100), (s, n) =>
+        Vector3vl.fromOct(s, n).eq(Display3vl.read('oct', s, n)));
+
+    jsc.property('hexadecimal sized', hextxt, jsc.nat(100), (s, n) =>
+        Vector3vl.fromHex(s, n).eq(Display3vl.read('hex', s, n)));
+
+    test('usable displays', () => {
+        expect(Display3vl.usableDisplays('read', 1)).toEqual(['bin','hex','oct']);
+        expect(Display3vl.usableDisplays('show', 1)).toEqual(['bin','hex','oct']);
+    });
 });
 

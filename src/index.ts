@@ -1153,4 +1153,77 @@ export class Mem3vl {
     }
 };
 
+export interface Display3vlInterface {
+    readonly name : string;
+    readonly sort : number;
+    can(kind : 'read' | 'show', bits : number) : boolean;
+    read(data : string, nbits? : number) : Vector3vl;
+    show(data : Vector3vl) : string;
+};
+
+class Display3vlHex implements Display3vlInterface {
+    name : string = "hex";
+    sort : number = 0;
+    can(kind : 'read' | 'show', bits : number) : boolean {
+        return true;
+    }
+    read(data : string, nbits? : number) : Vector3vl {
+        return Vector3vl.fromHex(data, nbits);
+    }
+    show(data : Vector3vl) : string {
+        return data.toHex();
+    }
+};
+
+class Display3vlBin implements Display3vlInterface {
+    name : string = "bin";
+    sort : number = 0;
+    can(kind : 'read' | 'show', bits : number) : boolean {
+        return true;
+    }
+    read(data : string, nbits? : number) : Vector3vl {
+        return Vector3vl.fromBin(data, nbits);
+    }
+    show(data : Vector3vl) : string {
+        return data.toBin();
+    }
+};
+
+class Display3vlOct implements Display3vlInterface {
+    name : string = "oct";
+    sort : number = 0;
+    can(kind : 'read' | 'show', bits : number) : boolean {
+        return true;
+    }
+    read(data : string, nbits? : number) : Vector3vl {
+        return Vector3vl.fromOct(data, nbits);
+    }
+    show(data : Vector3vl) : string {
+        return data.toOct();
+    }
+};
+
+export namespace Display3vl {
+    const displays : Record<string, Display3vlInterface> = {};
+    export function addDisplay(display : Display3vlInterface) {
+        displays[display.name] = display;
+    }
+    export function usableDisplays(kind : 'read' | 'show', bits : number) : string[] {
+        const ret : Display3vlInterface[] = [];
+        for (let iface of Object.values(displays)) {
+            if (iface.can(kind, bits)) ret.push(iface);
+        }
+        return ret.sort((x,y) => x.sort - y.sort ? x.sort - y.sort : x.name.localeCompare(y.name))
+                  .map(x => x.name);
+    }
+    export function show(name : string, data : Vector3vl) : string {
+        return displays[name].show(data);
+    }
+    export function read(name : string, data : string, nbits? : number) : Vector3vl {
+        return displays[name].read(data, nbits);
+    }
+    addDisplay(new Display3vlHex());
+    addDisplay(new Display3vlBin());
+    addDisplay(new Display3vlOct());
+};
 
