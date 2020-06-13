@@ -1156,12 +1156,29 @@ export class Mem3vl {
 export interface Display3vlInterface {
     readonly name : string;
     readonly sort : number;
+    readonly pattern : string;
     can(kind : 'read' | 'show', bits : number) : boolean;
     read(data : string, nbits? : number) : Vector3vl;
     show(data : Vector3vl) : string;
+    validate(data : string) : boolean;
 };
 
-class Display3vlHex implements Display3vlInterface {
+export class Display3vlWithRegex {
+    constructor(pattern : string) {
+        this.pattern = pattern;
+        this.#regex = RegExp('^' + this.pattern + '$');
+    }
+    pattern : string;
+    #regex : RegExp;
+    validate(data : string) : boolean {
+        return this.#regex.test(data);
+    }
+}
+
+export class Display3vlHex extends Display3vlWithRegex implements Display3vlInterface {
+    constructor() {
+        super("[0-9a-fx]*");
+    }
     name : string = "hex";
     sort : number = 0;
     can(kind : 'read' | 'show', bits : number) : boolean {
@@ -1175,7 +1192,10 @@ class Display3vlHex implements Display3vlInterface {
     }
 };
 
-class Display3vlBin implements Display3vlInterface {
+export class Display3vlBin extends Display3vlWithRegex implements Display3vlInterface {
+    constructor() {
+        super("[01x]*");
+    }
     name : string = "bin";
     sort : number = 0;
     can(kind : 'read' | 'show', bits : number) : boolean {
@@ -1189,7 +1209,10 @@ class Display3vlBin implements Display3vlInterface {
     }
 };
 
-class Display3vlOct implements Display3vlInterface {
+export class Display3vlOct extends Display3vlWithRegex implements Display3vlInterface {
+    constructor() {
+        super("[0-7x]*");
+    }
     name : string = "oct";
     sort : number = 0;
     can(kind : 'read' | 'show', bits : number) : boolean {
@@ -1226,6 +1249,12 @@ export class Display3vl {
     }
     read(name : string, data : string, nbits? : number) : Vector3vl {
         return this.displays[name].read(data, nbits);
+    }
+    pattern(name : string) : string {
+        return this.displays[name].pattern;
+    }
+    validate(name : string, data : string) {
+        return this.displays[name].validate(data);
     }
 };
 

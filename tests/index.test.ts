@@ -299,5 +299,11 @@ describe('display3vl', () => {
         expect(disp.usableDisplays('read', 1)).toEqual(['bin','hex','oct']);
         expect(disp.usableDisplays('show', 1)).toEqual(['bin','hex','oct']);
     });
+    
+    jsc.property('binary validate', binarytxt, s => disp.validate('bin', s));
+
+    jsc.property('octal validate', octaltxt, s => disp.validate('oct', s));
+
+    jsc.property('hexadecimal validate', hextxt, s => disp.validate('hex', s));
 });
 
