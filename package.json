@@ -14,12 +14,12 @@
   "license": "BSD-2-Clause",
   "devDependencies": {
     "@types/jest": "^23.3.14",
-    "jest": "^24.8.0",
+    "jest": "^26.0.1",
     "jsverify": "^0.8.4",
     "lodash": "^4.17.15",
-    "ts-jest": "^24.0.2",
-    "typedoc": "^0.15.0",
-    "typescript": "^3.5.3"
+    "ts-jest": "^26.1.0",
+    "typedoc": "^0.15.8",
+    "typescript": "^3.9.5"
   },
   "homepage": "https://github.com/tilk/js_3vl",
   "repository": {
