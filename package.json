@@ -1,6 +1,6 @@
 {
   "name": "3vl",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Three-valued logic vectors",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +18,7 @@
     "jsverify": "^0.8.4",
     "lodash": "^4.17.15",
     "ts-jest": "^26.1.0",
-    "typedoc": "^0.15.8",
+    "typedoc": "^0.17.7",
     "typescript": "^3.9.5"
   },
   "homepage": "https://github.com/tilk/js_3vl",
