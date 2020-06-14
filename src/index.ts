@@ -1167,7 +1167,7 @@ export interface Display3vlInterface {
 export class Display3vlWithRegex {
     constructor(pattern : string) {
         this.pattern = pattern;
-        this.#regex = RegExp('^' + this.pattern + '$');
+        this.#regex = RegExp('^(?:' + this.pattern + ')$');
     }
     pattern : string;
     #regex : RegExp;
