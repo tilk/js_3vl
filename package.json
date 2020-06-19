@@ -2,11 +2,13 @@
   "name": "3vl",
   "version": "0.3.3",
   "description": "Three-valued logic vectors",
-  "main": "dist/index.js",
+  "main": "dist/index",
   "types": "dist/index.d.ts",
   "scripts": {
     "prepare": "npm run build; npm run doc",
-    "build": "tsc",
+    "mjs": "tsc -d && mv dist/index.js dist/index.mjs",
+    "cjs": "tsc -m commonjs",
+    "build": "npm run mjs && npm run cjs",
     "test": "jest",
     "doc": "typedoc --out dist/docs src/"
   },
