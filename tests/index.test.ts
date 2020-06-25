@@ -26,9 +26,12 @@ const myrandarrays = <A>(arb : jsc.ArbitraryLike<A>) => jsc.bless({
     show: a => jsc.show.array(b => jsc.show.array(arb.show, b), a)
 });
 
+const bit = jsc.elements([-1, 1]);
 const trit = jsc.elements([-1, 0, 1]);
+const barray3vl = myarray(bit);
 const array3vl = myarray(trit);
 const arrays3vl = n => myarrays(n, trit);
+const bvector3vl = barray3vl.smap(a => Vector3vl.fromArray(a), v => v.toArray());
 const vector3vl = array3vl.smap(a => Vector3vl.fromArray(a), v => v.toArray());
 const vectors3vl = n => arrays3vl(n).smap(x => x.map(a => Vector3vl.fromArray(a)), x => x.map(v => v.toArray()));
 const binarytxt = jsc.array(jsc.elements(['0', '1', 'x'])).smap(a => a.join(''), s => s.split(''))
@@ -73,6 +76,24 @@ describe('parsing and printing', () => {
     jsc.property('hexadecimal bits', hextxt, s =>
         4 * s.length === Vector3vl.fromHex(s).bits);
     
+    jsc.property('rev number', bvector3vl, v =>
+        v.eq(Vector3vl.fromNumber(v.toNumber(), v.bits)));
+
+    jsc.property('rev number bits', bvector3vl, v =>
+        Math.max(1, v.bits) >= Vector3vl.fromNumber(v.toNumber()).bits);
+
+    jsc.property('rev number val', bvector3vl, v =>
+        v.toNumber() == Vector3vl.fromNumber(v.toNumber()).toNumber());
+
+    jsc.property('number', jsc.nat, n =>
+        n == Vector3vl.fromNumber(n).toNumber());
+
+    jsc.property('rev signed number', bvector3vl, v => v.bits == 0 ||
+        v.eq(Vector3vl.fromNumber(v.toNumberSigned(), v.bits)));
+
+    jsc.property('negative number', jsc.nat, n =>
+        -n == Vector3vl.fromNumber(-n).toNumberSigned());
+
     const ex = s => s == '' ? '0' : s[0] == 'x' ? 'x' : '0';
 
     jsc.property('binary sized', binarytxt, jsc.nat(100), (s, n) =>

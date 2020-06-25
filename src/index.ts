@@ -258,10 +258,13 @@ export class Vector3vl {
     static x = Vector3vl.xes(1);
 
     /**
-     * Construct a singleton vector containing _b_.
+     * Construct a vector containing Boolean value _b_.
+     *
+     * @param b Boolean value for the vector.
+     * @param bits Number of bits in the vector.
      */
-    static fromBool(b : boolean) {
-        return Vector3vl.make(1, b ? 1 : -1);
+    static fromBool(b : boolean, bits = 1) {
+        return Vector3vl.make(bits, b ? 1 : -1);
     }
 
     /**
@@ -495,6 +498,33 @@ export class Vector3vl {
               bvec = new Uint32Array(words);
         fromHexInternal(data, 0, nbits, avec, bvec);
         return new Vector3vl(nbits, avec, bvec);
+    }
+
+    /**
+     * Construct a vector from a number or a bigint.
+     *
+     * If _nbits_ bits are not enough to represent the number, it is
+     * truncated. If it's larger, the number is sign-extended.
+     * If it is not given, the resulting vector will have enough bits
+     * to represent the number completely.
+     *
+     * @param data The initialization value.
+     * @param nbits Number of bits in the vector.
+     */
+    static fromNumber(data : number | bigint, nbits? : number) {
+        const fbits = nbits === undefined ? 0 : nbits;
+        const bdata = BigInt(data);
+        if (bdata >= BigInt(0)) {
+            let b = bdata.toString(2);
+            return Vector3vl.fromBin(
+                '0'.repeat(Math.max(0, fbits - b.length)) + b, nbits);
+        } else {
+            const c = (-bdata).toString(2).length;
+            const j = bdata + (BigInt(1) << BigInt(c));
+            let b = j.toString(2);
+            return Vector3vl.fromBin(
+                '1'.repeat(Math.max(1, fbits - c)) + '0'.repeat(c - b.length) + b, nbits);
+        }
     }
 
     /**
@@ -942,12 +972,33 @@ export class Vector3vl {
      * is returned if any of the four bits is undefined.
      */
     toHex() {
+        this.normalize();
         return toHexInternal(0, this._bits, this._avec, this._bvec);
     }
 
     /** Returns a string describing the vector. */
     toString() {
         return "Vector3vl " + this.toBin();
+    }
+
+    /** Returns a unsigned number or BigInt representing the vector. */
+    toNumber(signed = false) {
+        if (signed) return this.toNumberSigned();
+        console.assert(this.isFullyDefined);
+        if (this._bits == 0) return 0;
+        if (this._bits < 32) return Number.parseInt(this.toHex(), 16);
+        else return BigInt("0x" + this.toHex());
+    }
+
+    /** Return a signed number or BigInt representing the vector. */
+    toNumberSigned() {
+        console.assert(this.isFullyDefined && this._bits > 0);
+        const sign = this.msb == 1;
+        if (this._bits < 32)
+            return sign ? Number.parseInt(this.toHex(), 16) - (1 << this._bits)
+                        : Number.parseInt(this.toHex(), 16);
+        else return sign ? BigInt("0x" + this.toHex()) - (BigInt(1) << BigInt(this._bits))
+                         : BigInt("0x" + this.toHex());
     }
 
     /** Compares two vectors for equality. */
