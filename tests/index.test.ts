@@ -77,19 +77,19 @@ describe('parsing and printing', () => {
         4 * s.length === Vector3vl.fromHex(s).bits);
     
     jsc.property('rev number', bvector3vl, v =>
-        v.eq(Vector3vl.fromNumber(v.toNumber(), v.bits)));
+        v.eq(Vector3vl.fromNumber(v.toBigInt(), v.bits)));
 
     jsc.property('rev number bits', bvector3vl, v =>
-        Math.max(1, v.bits) >= Vector3vl.fromNumber(v.toNumber()).bits);
+        Math.max(1, v.bits) >= Vector3vl.fromNumber(v.toBigInt()).bits);
 
     jsc.property('rev number val', bvector3vl, v =>
-        v.toNumber() == Vector3vl.fromNumber(v.toNumber()).toNumber());
+        v.toBigInt() == Vector3vl.fromNumber(v.toBigInt()).toBigInt());
 
     jsc.property('number', jsc.nat, n =>
         n == Vector3vl.fromNumber(n).toNumber());
 
     jsc.property('rev signed number', bvector3vl, v => v.bits == 0 ||
-        v.eq(Vector3vl.fromNumber(v.toNumberSigned(), v.bits)));
+        v.eq(Vector3vl.fromNumber(v.toBigIntSigned(), v.bits)));
 
     jsc.property('negative number', jsc.nat, n =>
         -n == Vector3vl.fromNumber(-n).toNumberSigned());

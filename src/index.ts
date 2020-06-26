@@ -981,24 +981,36 @@ export class Vector3vl {
         return "Vector3vl " + this.toBin();
     }
 
-    /** Returns a unsigned number or BigInt representing the vector. */
+    /** Returns a number representing the vector. */
     toNumber(signed = false) {
         if (signed) return this.toNumberSigned();
-        console.assert(this.isFullyDefined);
+        console.assert(this.isFullyDefined && this._bits < 32);
         if (this._bits == 0) return 0;
-        if (this._bits < 32) return Number.parseInt(this.toHex(), 16);
-        else return BigInt("0x" + this.toHex());
+        else return Number.parseInt(this.toHex(), 16);
     }
 
-    /** Return a signed number or BigInt representing the vector. */
+    /** Return a signed number representing the vector. */
     toNumberSigned() {
+        console.assert(this.isFullyDefined && this._bits > 0 && this._bits < 32);
+        const sign = this.msb == 1;
+        return sign ? Number.parseInt(this.toHex(), 16) - (1 << this._bits)
+                    : Number.parseInt(this.toHex(), 16);
+    }
+    
+    /** Returns a BigInt representing the vector. */
+    toBigInt(signed = false) {
+        if (signed) return this.toBigIntSigned();
+        console.assert(this.isFullyDefined);
+        if (this._bits == 0) return BigInt(0);
+        else return BigInt("0x" + this.toHex());
+    }
+    
+    /** Return a signed BigInt representing the vector. */
+    toBigIntSigned() {
         console.assert(this.isFullyDefined && this._bits > 0);
         const sign = this.msb == 1;
-        if (this._bits < 32)
-            return sign ? Number.parseInt(this.toHex(), 16) - (1 << this._bits)
-                        : Number.parseInt(this.toHex(), 16);
-        else return sign ? BigInt("0x" + this.toHex()) - (BigInt(1) << BigInt(this._bits))
-                         : BigInt("0x" + this.toHex());
+        return sign ? BigInt("0x" + this.toHex()) - (BigInt(1) << BigInt(this._bits))
+                    : BigInt("0x" + this.toHex());
     }
 
     /** Compares two vectors for equality. */
