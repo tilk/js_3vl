@@ -139,6 +139,20 @@ function fromBinInternal(data : string, start: number, nbits : number, avec : Ui
  */
 type InitType = 1 | 0 | -1 | boolean | '1' | '0' | 'x';
 
+/**
+ * Exception for three-value vectors.
+ */
+export class Error3vl extends Error {
+    constructor(s: string) {
+        super(s);
+        Object.setPrototypeOf(this, Error3vl.prototype);
+    }
+}
+
+function assert(c : boolean, s : string) {
+    if (!c) throw new Error3vl("Assertion failed: " + s);
+}
+
 /** 
  * Three-value logic vectors.
  *
@@ -202,7 +216,7 @@ export class Vector3vl {
             case true: case '1': case 1: iva = ivb = ~0; break;
             case false: case '0': case -1: case undefined: iva = ivb = 0; break;
             case 'x': case 0: iva = 0; ivb = ~0; break;
-            default: console.assert(false);
+            default: assert(false, "Vector3vl.make() called with invalid initializer");
         }
         const words = (bits+31)/32 | 0;
         return new Vector3vl(bits,
@@ -609,7 +623,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     and(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.and() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip((a, b) => a & b, v._avec, this._avec),
             zip((a, b) => a & b, v._bvec, this._bvec));
@@ -623,7 +637,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     or(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.or() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip((a, b) => a | b, v._avec, this._avec),
             zip((a, b) => a | b, v._bvec, this._bvec));
@@ -637,7 +651,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     xor(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.xor() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip4((a1, a2, b1, b2) => (a1 | b1) & (a2 ^ b2),
                  v._avec, v._bvec, this._avec, this._bvec),
@@ -653,7 +667,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     nand(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.nand() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip((a, b) => ~(a & b), v._bvec, this._bvec),
             zip((a, b) => ~(a & b), v._avec, this._avec));
@@ -667,7 +681,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     nor(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.nor() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip((a, b) => ~(a | b), v._bvec, this._bvec),
             zip((a, b) => ~(a | b), v._avec, this._avec));
@@ -681,7 +695,7 @@ export class Vector3vl {
      * @param v The other vector.
      */
     xnor(v : Vector3vl) {
-        console.assert(v._bits == this._bits);
+        assert(v._bits == this._bits, "Vector3vl.xnor() called with vectors of different sizes");
         return new Vector3vl(this._bits,
             zip4((a1, a2, b1, b2) => ~((a1 & b1) ^ (a2 | b2)),
                  v._avec, v._bvec, this._avec, this._bvec),
@@ -984,14 +998,17 @@ export class Vector3vl {
     /** Returns a number representing the vector. */
     toNumber(signed = false) {
         if (signed) return this.toNumberSigned();
-        console.assert(this.isFullyDefined && this._bits < 32);
+        assert(this.isFullyDefined, "Vector3vl.toNumber() called on a not fully defined vector");
+        assert(this._bits < 32, "Vector3vl.toNumber() called on a too wide vector");
         if (this._bits == 0) return 0;
         else return Number.parseInt(this.toHex(), 16);
     }
 
     /** Return a signed number representing the vector. */
     toNumberSigned() {
-        console.assert(this.isFullyDefined && this._bits > 0 && this._bits < 32);
+        assert(this.isFullyDefined, "Vector3vl.toNumberSigned() called on a not fully defined vector");
+        assert(this._bits < 32, "Vector3vl.toNumberSigned() called on a too wide vector");
+        assert(this._bits > 0, "Vector3vl.toNumberSigned() called on an empty vector");
         const sign = this.msb == 1;
         return sign ? Number.parseInt(this.toHex(), 16) - (1 << this._bits)
                     : Number.parseInt(this.toHex(), 16);
@@ -1000,14 +1017,15 @@ export class Vector3vl {
     /** Returns a BigInt representing the vector. */
     toBigInt(signed = false) {
         if (signed) return this.toBigIntSigned();
-        console.assert(this.isFullyDefined);
+        assert(this.isFullyDefined, "Vector3vl.toBigInt() called on a not fully defined vector");
         if (this._bits == 0) return BigInt(0);
         else return BigInt("0x" + this.toHex());
     }
     
     /** Return a signed BigInt representing the vector. */
     toBigIntSigned() {
-        console.assert(this.isFullyDefined && this._bits > 0);
+        assert(this.isFullyDefined, "Vector3vl.toBigIntSigned() called on a not fully defined vector");
+        assert(this._bits > 0, "Vector3vl.toBigIntSigned() called on an empty vector");
         const sign = this.msb == 1;
         return sign ? BigInt("0x" + this.toHex()) - (BigInt(1) << BigInt(this._bits))
                     : BigInt("0x" + this.toHex());
@@ -1068,7 +1086,7 @@ export class Mem3vl {
         const ret = new Mem3vl(data[0].bits, data.length);
         for (const i in data) {
             data[i].normalize();
-            console.assert(data[i].bits == ret._bits);
+            assert(data[i].bits == ret._bits, "Mem3vl.fromData() called with vectors of different sizes");
             for (let j = 0; j < ret._wpc; j++) {
                 const idx = Number(i)*ret._wpc + j;
                 ret._avec[idx] = (data[i] as any)._avec[j];
@@ -1090,7 +1108,7 @@ export class Mem3vl {
             this._bvec.slice(idx, idx+this._wpc));
     }
     set(i : number, v : Vector3vl) {
-        console.assert(v.bits == this._bits);
+        assert(v.bits == this._bits, "Mem3vl.set() called with a vector with different bit width than the memory");
         v.normalize();
         for (let j = 0; j < this._wpc; j++) {
             this._avec[i*this._wpc+j] = (v as any)._avec[j];
