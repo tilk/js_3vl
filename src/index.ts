@@ -1299,12 +1299,66 @@ export class Display3vlOct extends Display3vlWithRegex implements Display3vlInte
     }
 };
 
+class Display3vlDec extends Display3vlWithRegex {
+    constructor() {
+        super('[0-9]*|x');
+    }
+    get name() {
+        return "dec";
+    }
+    get sort() {
+        return 0;
+    }
+    can(kind, bits) {
+        return true;
+    }
+    read(data, bits) {
+        if (data == 'x') return Vector3vl.xes(bits);
+        return Vector3vl.fromNumber(BigInt(data), bits);
+    }
+    show(data) {
+        if (!data.isFullyDefined) return 'x';
+        return data.toBigInt().toString();
+    }
+    size(bits) {
+        return Math.max(1, Math.ceil(bits / Math.log2(10)))
+    }
+};
+
+class Display3vlDec2c extends Display3vlWithRegex {
+    constructor() {
+        super('-?[0-9]*|x');
+    }
+    get name() {
+        return "dec2c";
+    }
+    get sort() {
+        return 0;
+    }
+    can(kind, bits) {
+        return bits > 0;
+    }
+    read(data, bits) {
+        if (data == 'x') return Vector3vl.xes(bits);
+        return Vector3vl.fromNumber(BigInt(data), bits);
+    }
+    show(data) {
+        if (!data.isFullyDefined) return 'x';
+        return data.toBigIntSigned().toString();
+    }
+    size(bits) {
+        return 1 + Math.ceil(bits / Math.log2(10))
+    }
+};
+
 export class Display3vl {
     private readonly displays : Record<string, Display3vlInterface> = {};
     constructor() {
         this.addDisplay(new Display3vlHex());
         this.addDisplay(new Display3vlBin());
         this.addDisplay(new Display3vlOct());
+        this.addDisplay(new Display3vlDec());
+        this.addDisplay(new Display3vlDec2c());
     }
     addDisplay(display : Display3vlInterface) {
         this.displays[display.name] = display;

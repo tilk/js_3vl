@@ -37,6 +37,8 @@ const vectors3vl = n => arrays3vl(n).smap(x => x.map(a => Vector3vl.fromArray(a)
 const binarytxt = jsc.array(jsc.elements(['0', '1', 'x'])).smap(a => a.join(''), s => s.split(''))
 const octaltxt = myarray(jsc.elements(['x'].concat(Array.from(Array(8), (a, i) => i.toString()))))
     .smap(a => a.join(''), s => s.split(''))
+const decimaltxt = myarray(jsc.elements([].concat(Array.from(Array(10), (a, i) => i.toString()))))
+    .smap(a => a.join(''), s => s.split(''))
 const hextxt = myarray(jsc.elements(['x'].concat(Array.from(Array(16), (a, i) => i.toString(16)))))
     .smap(a => a.join(''), s => s.split(''))
 const randarrays3vl = myrandarrays(trit);
@@ -307,6 +309,10 @@ describe('display3vl', () => {
         s === disp.show('hex', Vector3vl.fromHex(s)) &&
         s === disp.read('hex', s).toHex());
 
+    jsc.property('decimal', decimaltxt, s =>
+        BigInt(s).toString() === disp.show('dec', Vector3vl.fromNumber(BigInt(s))) &&
+        BigInt(s) === disp.read('dec', s).toBigInt());
+
     jsc.property('binary sized', binarytxt, jsc.nat(100), (s, n) =>
         Vector3vl.fromBin(s, n).eq(disp.read('bin', s, n)));
 
@@ -317,8 +323,8 @@ describe('display3vl', () => {
         Vector3vl.fromHex(s, n).eq(disp.read('hex', s, n)));
 
     test('usable displays', () => {
-        expect(disp.usableDisplays('read', 1)).toEqual(['bin','hex','oct']);
-        expect(disp.usableDisplays('show', 1)).toEqual(['bin','hex','oct']);
+        expect(disp.usableDisplays('read', 1)).toEqual(['bin','dec','dec2c','hex','oct']);
+        expect(disp.usableDisplays('show', 1)).toEqual(['bin','dec','dec2c','hex','oct']);
     });
     
     jsc.property('binary validate', binarytxt, s => disp.validate('bin', s));
@@ -327,11 +333,19 @@ describe('display3vl', () => {
 
     jsc.property('hexadecimal validate', hextxt, s => disp.validate('hex', s));
 
+    jsc.property('decimal validate', decimaltxt, s => disp.validate('dec', s));
+    
+    jsc.property('signed decimal validate', decimaltxt, s => disp.validate('dec2c', s) && disp.validate('dec2c', "-" + s));
+
     jsc.property('binary size', binarytxt, s => disp.size('bin', Vector3vl.fromBin(s).bits) == s.length);
 
     jsc.property('octal size', octaltxt, s => disp.size('oct', Vector3vl.fromOct(s).bits) == s.length);
     
     jsc.property('hexadecimal size', hextxt, s => disp.size('hex', Vector3vl.fromHex(s).bits) == s.length);
+    
+    jsc.property('decimal size', decimaltxt, s => disp.size('dec', Vector3vl.fromNumber(BigInt(s)).bits) >= BigInt(s).toString().length);
+    
+    jsc.property('signed decimal size', decimaltxt, s => disp.size('dec2c', Vector3vl.fromNumber(-BigInt(s)).bits) >= (-BigInt(s)).toString().length);
     
     jsc.property('octal size fractional', binarytxt, s => disp.size('oct', Vector3vl.fromBin(s).bits) == Math.ceil(s.length / 3));
 
