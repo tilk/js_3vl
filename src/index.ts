@@ -515,6 +515,23 @@ export class Vector3vl {
     }
 
     /**
+     * Construct a vector from a Verilog-like string.
+     */
+    static fromString(data : string) {
+        const re = /^([0-9]*)'?(b[01x]*|o[0-7x]*|h[0-9a-fx]*|d[0-9]*)$/;
+        const res = re.exec(data);
+        assert(res != null, "Vector3vl.fromString() Invalid string");
+        const bits = res[1].length ? Number(res[1]) : undefined;
+        const num = res[2].slice(1);
+        switch (res[2][0]) {
+            case 'b': return Vector3vl.fromBin(num, bits);
+            case 'o': return Vector3vl.fromOct(num, bits);
+            case 'h': return Vector3vl.fromHex(num, bits);
+            case 'd': return Vector3vl.fromNumber(BigInt(num), bits);
+        }
+    }
+
+    /**
      * Construct a vector from a number or a bigint.
      *
      * If _nbits_ bits are not enough to represent the number, it is

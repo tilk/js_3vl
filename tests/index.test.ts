@@ -56,6 +56,33 @@ describe('relation to arrays', () => {
         _.isEqual(v.toArray(), Array.from(Array(v.bits), (x, k) => v.get(k))));
 });
 
+describe('fromString', () => {
+    jsc.property('binary', binarytxt, s =>
+        s === Vector3vl.fromString('b' + s).toBin());
+
+    jsc.property('octal', octaltxt, s =>
+        s === Vector3vl.fromString('o' + s).toOct());
+
+    jsc.property('hexadecimal', hextxt, s =>
+        s === Vector3vl.fromString('h' + s).toHex());
+
+    jsc.property('decimal', decimaltxt, s =>
+        BigInt(s) === Vector3vl.fromString('d' + s).toBigInt());
+    
+    jsc.property('binary sized bits', binarytxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromString(n + 'b' + s).bits);
+
+    jsc.property('octal sized bits', octaltxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromString(n + 'o' + s).bits);
+
+    jsc.property('hexadecimal sized bits', hextxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromString(n + 'h' + s).bits);
+
+    jsc.property('decimal sized bits', decimaltxt, jsc.nat(100), (s, n) =>
+        n === Vector3vl.fromString(n + 'd' + s).bits);
+
+});
+
 describe('parsing and printing', () => {
     jsc.property('rev binary', vector3vl, v =>
         v.eq(Vector3vl.fromBin(v.toBin())));
@@ -115,6 +142,9 @@ describe('parsing and printing', () => {
 
     jsc.property('hexadecimal sized bits', hextxt, jsc.nat(100), (s, n) =>
         n === Vector3vl.fromHex(s, n).bits);
+    
+    jsc.property('number sized bits', jsc.nat, jsc.nat(100), (v, n) =>
+        n === Vector3vl.fromNumber(v, n).bits);
     
 });
 
