@@ -1256,9 +1256,9 @@ export interface Display3vlInterface {
     readonly sort : number;
     readonly pattern : string;
     can(kind : 'read' | 'show', bits : number) : boolean;
-    read(data : string, nbits? : number) : Vector3vl;
+    read(data : string, bits? : number) : Vector3vl;
     show(data : Vector3vl) : string;
-    validate(data : string) : boolean;
+    validate(data : string, bits? : number) : boolean;
     size(bits : number) : number;
 };
 
@@ -1269,7 +1269,7 @@ export class Display3vlWithRegex {
     }
     pattern : string;
     #regex : RegExp;
-    validate(data : string) : boolean {
+    validate(data : string, bits? : number) : boolean {
         return this.#regex.test(data);
     }
 }
@@ -1283,8 +1283,8 @@ export class Display3vlHex extends Display3vlWithRegex implements Display3vlInte
     can(kind : 'read' | 'show', bits : number) : boolean {
         return true;
     }
-    read(data : string, nbits? : number) : Vector3vl {
-        return Vector3vl.fromHex(data, nbits);
+    read(data : string, bits? : number) : Vector3vl {
+        return Vector3vl.fromHex(data, bits);
     }
     show(data : Vector3vl) : string {
         return data.toHex();
@@ -1303,8 +1303,8 @@ export class Display3vlBin extends Display3vlWithRegex implements Display3vlInte
     can(kind : 'read' | 'show', bits : number) : boolean {
         return true;
     }
-    read(data : string, nbits? : number) : Vector3vl {
-        return Vector3vl.fromBin(data, nbits);
+    read(data : string, bits? : number) : Vector3vl {
+        return Vector3vl.fromBin(data, bits);
     }
     show(data : Vector3vl) : string {
         return data.toBin();
@@ -1323,8 +1323,8 @@ export class Display3vlOct extends Display3vlWithRegex implements Display3vlInte
     can(kind : 'read' | 'show', bits : number) : boolean {
         return true;
     }
-    read(data : string, nbits? : number) : Vector3vl {
-        return Vector3vl.fromOct(data, nbits);
+    read(data : string, bits? : number) : Vector3vl {
+        return Vector3vl.fromOct(data, bits);
     }
     show(data : Vector3vl) : string {
         return data.toOct();
@@ -1409,14 +1409,14 @@ export class Display3vl {
     show(name : string, data : Vector3vl) : string {
         return this.displays[name].show(data);
     }
-    read(name : string, data : string, nbits? : number) : Vector3vl {
-        return this.displays[name].read(data, nbits);
+    read(name : string, data : string, bits? : number) : Vector3vl {
+        return this.displays[name].read(data, bits);
     }
     pattern(name : string) : string {
         return this.displays[name].pattern;
     }
-    validate(name : string, data : string) {
-        return this.displays[name].validate(data);
+    validate(name : string, data : string, bits? : number) {
+        return this.displays[name].validate(data, bits);
     }
     size(name : string, bits : number) : number {
         return this.displays[name].size(bits);
