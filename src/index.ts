@@ -140,6 +140,15 @@ function fromBinInternal(data : string, start: number, nbits : number, avec : Ui
 type InitType = 1 | 0 | -1 | boolean | '1' | '0' | 'x';
 
 /**
+ * Type for clonable representations of three-value vectors.
+ */
+type Clonable3vl = {
+    _bits: number;
+    _avec: Uint32Array;
+    _bvec: Uint32Array;
+};
+
+/**
  * Exception for three-value vectors.
  */
 export class Error3vl extends Error {
@@ -529,6 +538,15 @@ export class Vector3vl {
             case 'h': return Vector3vl.fromHex(num, bits);
             case 'd': return Vector3vl.fromNumber(BigInt(num), bits);
         }
+    }
+
+    /**
+     * Construct a vector from clonable representation.
+     *
+     * @param data The initialization value.
+     */
+    static fromClonable(data : Clonable3vl) {
+        return new Vector3vl(data._bits, data._avec, data._bvec);
     }
 
     /**
@@ -1010,6 +1028,11 @@ export class Vector3vl {
     /** Returns a string describing the vector. */
     toString() {
         return "Vector3vl " + this.toBin();
+    }
+
+    /** Returns an object which can be copied by structured clone. */
+    toClonable() : Clonable3vl {
+        return { _bits: this._bits, _avec: this._avec, _bvec: this._bvec };
     }
 
     /** Returns a number representing the vector. */
